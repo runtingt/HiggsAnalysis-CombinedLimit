@@ -12,9 +12,11 @@
 namespace RooFit {
 namespace Experimental {
 # define CODEGEN_IMPL(CLASS_NAME) void codegenImpl(CLASS_NAME &arg0, CodegenContext &ctx)
+# define CODEGEN_INTEGRAL_IMPL(CLASS_NAME) std::string codegenIntegralImpl(CLASS_NAME &arg0, int code, const char *rangeName, CodegenContext &ctx)
 # define ARG_VAR auto &arg = arg0;
 #else
 # define CODEGEN_IMPL(CLASS_NAME) void CLASS_NAME::translate(RooFit::Detail::CodeSquashContext &ctx) const
+# define CODEGEN_INTEGRAL_IMPL(CLASS_NAME) std::string CLASS_NAME::buildCallToAnalyticIntegral(Int_t code, const char *rangeName, RooFit::Detail::CodeSquashContext &ctx) const
 # define ARG_VAR auto &arg = *this;
 #endif
 
