@@ -1,2 +1,4 @@
 site
 *.pyc
+install
+build

@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: HiggsAnalysisCombinedLimit
+Version: 1.0
+Summary: CMS Combine
+Author: The CMS Collaboration
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+HiggsAnalysis-CombinedLimit
+===========================
+
+### Official documentation
+
+All documentation, including installation instructions, is hosted at
+http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/latest
+
+The source code of this documentation can be found in the `docs/` folder in this repository.
+
+### Publication 
+
+The `Combine` tool publication can be found [here](https://arxiv.org/abs/2404.06614). Please consider citing this reference if you use the `Combine` tool. 
