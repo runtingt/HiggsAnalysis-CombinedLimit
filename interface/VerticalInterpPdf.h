@@ -9,6 +9,8 @@
 #include "RooAICRegistry.h"
 #include "RooObjCacheManager.h"
 
+#include "CombineCodegenImpl.h"
+
 class VerticalInterpPdf : public RooAbsPdf {
 public:
 
@@ -24,6 +26,7 @@ public:
   Bool_t forceAnalyticalInt(const RooAbsArg&) const override { return kTRUE ; }
   Int_t getAnalyticalIntegralWN(RooArgSet& allVars, RooArgSet& numVars, const RooArgSet* normSet, const char* rangeName=0) const override ;
   Double_t analyticalIntegralWN(Int_t code, const RooArgSet* normSet, const char* rangeName=0) const override ;
+  COMBINE_DECLARE_ANALYTICAL_INTEGRAL
 
   const RooArgList& funcList() const { return _funcList ; }
   const RooArgList& coefList() const { return _coefList ; }
@@ -57,5 +60,7 @@ protected:
 
   ClassDefOverride(VerticalInterpPdf,3) // PDF constructed from a sum of (non-pdf) functions
 };
+
+COMBINE_DECLARE_CODEGEN_INTEGRAL_IMPL(VerticalInterpPdf);
 
 #endif

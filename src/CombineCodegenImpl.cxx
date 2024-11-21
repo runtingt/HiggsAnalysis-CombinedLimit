@@ -5,6 +5,7 @@
 #include "../interface/AsymPow.h"
 #include "../interface/ProcessNormalization.h"
 #include "../interface/VerticalInterpHistPdf.h"
+#include "../interface/VerticalInterpPdf.h"
 
 #include <RooUniformBinning.h>
 
@@ -205,6 +206,12 @@ CODEGEN_IMPL(FastVerticalInterpHistPdf2D2) {
 
   ctx.addToCodeBody(code.str(), true);
   ctx.addResult(&arg, arrName + "[" + binIdx.str() + "]");
+}
+
+CODEGEN_INTEGRAL_IMPL(VerticalInterpPdf) {
+  ARG_VAR;
+
+  return "1.0";
 }
 
 #if ROOT_VERSION_CODE >= ROOT_VERSION(6,35,0)
