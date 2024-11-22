@@ -56,8 +56,6 @@ protected:
   Double_t _pdfFloorVal; // PDF floor should be customizable, default is 1e-15
   Double_t _integralFloorVal; // PDF integral floor should be customizable, default is 1e-10
 
-  Double_t additiveInterpolate() const ;
-  Double_t multiplicativeInterpolate() const ;
   Double_t interpolate(Double_t coeff, Double_t central, RooAbsReal *fUp, RooAbsReal *fDown) const ; 
 
   bool isConditionalProdPdf(RooAbsReal *pdf) const;
