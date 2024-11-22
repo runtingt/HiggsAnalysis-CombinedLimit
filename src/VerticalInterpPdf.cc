@@ -1,5 +1,6 @@
 #include "../interface/VerticalInterpPdf.h"
 #include "../interface/RooCheapProduct.h"
+#include "../interface/CombineMathFuncs.h"
 
 #include "RooFit.h"
 #include "Riostream.h"
@@ -171,6 +172,8 @@ Bool_t VerticalInterpPdf::checkObservables(const RooArgSet* nset) const
 Int_t VerticalInterpPdf::getAnalyticalIntegralWN(RooArgSet& allVars, RooArgSet& analVars, 
 					     const RooArgSet* normSet2, const char* /*rangeName*/) const 
 {
+  std::cout << "DOING VerticalInterpPdf::getAnalyticalIntegralWN" << std::endl;
+
   // Advertise that all integrals can be handled internally.
 
   // Handle trivial no-integration scenario
@@ -277,8 +280,12 @@ Double_t VerticalInterpPdf::analyticalIntegralWN(Int_t code, const RooArgSet* no
   // Implement analytical integrations by deferring integration of component
   // functions to integrators of components
 
+  std::cout << "DOING VerticalInterpPdf::analyticalIntegralWN" << std::endl;
+
   // Handle trivial passthrough scenario
   if (code==0) return getVal(normSet2) ;
+
+  std::cout << "Nontrivial scenario" << std::endl;
 
   Double_t value = 0;
 
@@ -287,9 +294,12 @@ Double_t VerticalInterpPdf::analyticalIntegralWN(Int_t code, const RooArgSet* no
   RooArgList& fIntL = cache->_funcIntList;
 
   Double_t central = static_cast<RooAbsReal&>(fIntL[0]).getVal();
+  std::cout << "Central value: " << central << std::endl;
   value += central;
 
+  std::cout << "Found " << _coefList.getSize() << " coefficients" << std::endl;
   for (int iCoef = 0; iCoef < _coefList.getSize(); ++iCoef) {
+    std::cout << "Processing coefficient " << iCoef << std::endl;
     Double_t coefVal = static_cast<RooAbsReal&>(_coefList[iCoef]).getVal(normSet2) ;
     RooAbsReal * funcIntUp = &(RooAbsReal&)fIntL[2 * iCoef + 1];
     RooAbsReal * funcIntDn = &(RooAbsReal&)fIntL[2 * iCoef + 2];
@@ -317,79 +327,7 @@ Double_t VerticalInterpPdf::analyticalIntegralWN(Int_t code, const RooArgSet* no
 
 Double_t VerticalInterpPdf::interpolate(Double_t coeff, Double_t central, RooAbsReal *fUp, RooAbsReal *fDn) const  
 {
-    if (_quadraticAlgo == -1) {
-        Double_t kappa = (coeff > 0 ? fUp->getVal()/central : central/fDn->getVal());
-        return pow(kappa,fabs(coeff));
-    }
-
-    if (fabs(coeff) >= _quadraticRegion) {
-        return coeff * (coeff > 0 ? fUp->getVal() - central : central - fDn->getVal());
-    } else {
-        // quadratic interpolation coefficients between the three
-        if (_quadraticAlgo == 0) {
-            // quadratic interpolation null at zero and continuous at boundaries, but not differentiable at boundaries
-            // conditions:
-            //   c_up (+_quadraticRegion) = +_quadraticRegion
-            //   c_cen(+_quadraticRegion) = -_quadraticRegion
-            //   c_dn (+_quadraticRegion) = 0
-            //   c_up (-_quadraticRegion) = 0 
-            //   c_cen(-_quadraticRegion) = -_quadraticRegion
-            //   c_dn (-_quadraticRegion) = +_quadraticRegion
-            //   c_up(0) = c_dn(0) = c_cen(0) = 0
-            Double_t c_up  = + coeff * (_quadraticRegion + coeff) / (2 * _quadraticRegion);
-            Double_t c_dn  = - coeff * (_quadraticRegion - coeff) / (2 * _quadraticRegion);
-            Double_t c_cen = - coeff * coeff / _quadraticRegion;
-            return c_up * fUp->getVal() + c_dn * fDn->getVal() + c_cen * central;
-        } else if (_quadraticAlgo == 1) { 
-            // quadratic interpolation that is everywhere differentiable, but it's not null at zero
-            // conditions on the function
-            //   c_up (+_quadraticRegion) = +_quadraticRegion
-            //   c_cen(+_quadraticRegion) = -_quadraticRegion
-            //   c_dn (+_quadraticRegion) = 0
-            //   c_up (-_quadraticRegion) = 0 
-            //   c_cen(-_quadraticRegion) = -_quadraticRegion
-            //   c_dn (-_quadraticRegion) = +_quadraticRegion
-            // conditions on the derivatives
-            //   c_up '(+_quadraticRegion) = +1
-            //   c_cen'(+_quadraticRegion) = -1
-            //   c_dn '(+_quadraticRegion) = 0
-            //   c_up '(-_quadraticRegion) = 0
-            //   c_cen'(-_quadraticRegion) = +1
-            //   c_dn '(-_quadraticRegion) = -1
-            Double_t c_up  = (_quadraticRegion + coeff) * (_quadraticRegion + coeff) / (4 * _quadraticRegion);
-            Double_t c_dn  = (_quadraticRegion - coeff) * (_quadraticRegion - coeff) / (4 * _quadraticRegion);
-            Double_t c_cen = - c_up - c_dn;
-            return c_up * fUp->getVal() + c_dn * fDn->getVal() + c_cen * central;
-        } else/* if (_quadraticAlgo == 1)*/ {
-            // P(6) interpolation that is everywhere differentiable and null at zero
-            /* === how the algorithm works, in theory ===
-            * let  dhi = h_hi - h_nominal
-            *      dlo = h_lo - h_nominal
-            * and x be the morphing parameter
-            * we define alpha = x * 0.5 * ((dhi-dlo) + (dhi+dlo)*smoothStepFunc(x));
-            * which satisfies:
-            *     alpha(0) = 0
-            *     alpha(+1) = dhi
-            *     alpha(-1) = dlo
-            *     alpha(x >= +1) = |x|*dhi
-            *     alpha(x <= -1) = |x|*dlo
-            *     alpha is continuous and has continuous first and second derivative, as smoothStepFunc has them
-            * === and in practice ===
-            * we already have computed the histogram for diff=(dhi-dlo) and sum=(dhi+dlo)
-            * so we just do template += (0.5 * x) * (diff + smoothStepFunc(x) * sum)
-            * ========================================== */
-            Double_t cnorm = coeff/_quadraticRegion;
-            Double_t cnorm2 = pow(cnorm, 2);
-            Double_t hi = fUp->getVal() - central;
-            Double_t lo = fDn->getVal() - central;
-            Double_t sum = hi+lo;
-            Double_t diff = hi-lo;
-            Double_t a = coeff/2.; // cnorm*_quadraticRegion
-            Double_t b = 0.125 * cnorm * (cnorm2 * (3.*cnorm2 - 10.) + 15.);
-            Double_t result = a*(diff + b*sum);
-            return result;
-        }
-    }
+  return RooFit::Detail::MathFuncs::interpolate(coeff, central, fUp, fDn, _quadraticRegion, _quadraticAlgo);
 }
 
 
