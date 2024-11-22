@@ -146,8 +146,8 @@ inline double processNormalization(double nominalValue, std::size_t nThetas, std
 }
 
 // Interpolation  (from VerticalInterpPdf)
-inline Double_t interpolate(const Double_t coeff, const Double_t central, const RooAbsReal *fUp, 
-                            const RooAbsReal *fDn, const Double_t quadraticRegion, const Int_t quadraticAlgo)
+inline Double_t interpolate(Double_t const coeff, Double_t const central, RooAbsReal const *fUp, 
+                            RooAbsReal const *fDn, Double_t const quadraticRegion, Int_t const quadraticAlgo)
 {
    if (quadraticAlgo == -1) {
       Double_t kappa = (coeff > 0 ? fUp->getVal()/central : central/fDn->getVal());
@@ -222,6 +222,40 @@ inline Double_t interpolate(const Double_t coeff, const Double_t central, const 
          return result;
       }
    }
+}
+
+inline Double_t additiveInterpolate(RooArgList const& coefList, RooArgList const& funcList, Double_t const pdfFloorVal,
+                                    Double_t const quadraticRegion, Int_t const quadraticAlgo)
+{
+  // Do running sum of coef/func pairs, calculate lastCoef.
+  RooAbsReal* func = &(RooAbsReal&)funcList[0];
+  Double_t central = func->getVal();
+  Double_t value = central;
+
+  for (int iCoef = 0; iCoef < coefList.getSize(); ++iCoef) {
+    Double_t coefVal = static_cast<RooAbsReal&>(coefList[iCoef]).getVal() ;
+    RooAbsReal* funcUp = &(RooAbsReal&)funcList[2 * iCoef + 1];
+    RooAbsReal* funcDn = &(RooAbsReal&)funcList[2 * iCoef + 2];
+    value += interpolate(coefVal, central, funcUp, funcDn, quadraticRegion, quadraticAlgo);
+  }
+  return ( value > 0. ? value : pdfFloorVal);
+}
+
+inline Double_t multiplicativeInterpolate(RooArgList const& coefList, RooArgList const& funcList, Double_t const pdfFloorVal,
+                                          Double_t const quadraticRegion, Int_t const quadraticAlgo)
+{
+  // Do running sum of coef/func pairs, calculate lastCoef.
+  RooAbsReal* func = &(RooAbsReal&)funcList[0];
+  Double_t central = func->getVal();
+  Double_t value = central;
+
+  for (int iCoef = 0; iCoef < coefList.getSize(); ++iCoef) {
+    Double_t coefVal = static_cast<RooAbsReal&>(coefList[iCoef]).getVal() ;
+    RooAbsReal* funcUp = &(RooAbsReal&)funcList[2 * iCoef + 1];
+    RooAbsReal* funcDn = &(RooAbsReal&)funcList[2 * iCoef + 2];
+    value *= interpolate(coefVal, central, funcUp, funcDn, quadraticRegion, quadraticAlgo);
+  }
+  return ( value > 0. ? value : pdfFloorVal);
 }
 
 } // namespace MathFuncs

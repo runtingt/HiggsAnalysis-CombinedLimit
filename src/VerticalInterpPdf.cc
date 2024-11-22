@@ -100,31 +100,13 @@ VerticalInterpPdf::~VerticalInterpPdf() = default;
 Double_t VerticalInterpPdf::evaluate() const 
 {
   // Do running sum of coef/func pairs, calculate lastCoef.
-  RooAbsReal* func = &(RooAbsReal&)_funcList[0];
-
-  // Calculate the current value
-  Double_t central = func->getVal();
-  Double_t value = central;
-
+  Double_t value = _pdfFloorVal;
   if (_quadraticAlgo >= 0) {
-      // additive interpolation
-      for (int iCoef = 0; iCoef < _coefList.getSize(); ++iCoef) {
-          Double_t coefVal = static_cast<RooAbsReal&>(_coefList[iCoef]).getVal() ;
-          RooAbsReal* funcUp = &(RooAbsReal&)_funcList[2 * iCoef + 1];
-          RooAbsReal* funcDn = &(RooAbsReal&)_funcList[2 * iCoef + 2];
-          value += interpolate(coefVal, central, funcUp, funcDn);
-      }
+    value = RooFit::Detail::MathFuncs::additiveInterpolate(_coefList, _funcList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo);
   } else {
-      // multiplicative interpolation
-      for (int iCoef = 0; iCoef < _coefList.getSize(); ++iCoef) {
-          Double_t coefVal = static_cast<RooAbsReal&>(_coefList[iCoef]).getVal() ;
-          RooAbsReal* funcUp = &(RooAbsReal&)_funcList[2 * iCoef + 1];
-          RooAbsReal* funcDn = &(RooAbsReal&)_funcList[2 * iCoef + 2];
-          value *= interpolate(coefVal, central, funcUp, funcDn);
-      }
+    value = RooFit::Detail::MathFuncs::multiplicativeInterpolate(_coefList, _funcList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo);
   }
-   
-  return ( value > 0. ? value : _pdfFloorVal);
+  return value;
 }
 
 
