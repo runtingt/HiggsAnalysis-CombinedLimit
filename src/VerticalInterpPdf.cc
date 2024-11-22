@@ -154,8 +154,6 @@ Bool_t VerticalInterpPdf::checkObservables(const RooArgSet* nset) const
 Int_t VerticalInterpPdf::getAnalyticalIntegralWN(RooArgSet& allVars, RooArgSet& analVars, 
 					     const RooArgSet* normSet2, const char* /*rangeName*/) const 
 {
-  std::cout << "DOING VerticalInterpPdf::getAnalyticalIntegralWN" << std::endl;
-
   // Advertise that all integrals can be handled internally.
 
   // Handle trivial no-integration scenario
@@ -262,44 +260,17 @@ Double_t VerticalInterpPdf::analyticalIntegralWN(Int_t code, const RooArgSet* no
   // Implement analytical integrations by deferring integration of component
   // functions to integrators of components
 
-  std::cout << "DOING VerticalInterpPdf::analyticalIntegralWN" << std::endl;
-
   // Handle trivial passthrough scenario
   if (code==0) return getVal(normSet2) ;
-
-  std::cout << "Nontrivial scenario" << std::endl;
-
-  Double_t value = 0;
 
   // WVE needs adaptation for rangeName feature
   CacheElem* cache = (CacheElem*) _normIntMgr.getObjByIndex(code-1) ;
   RooArgList& fIntL = cache->_funcIntList;
+  Double_t value = RooFit::Detail::MathFuncs::additiveInterpolate(_coefList, fIntL, _pdfFloorVal, _quadraticRegion, _quadraticAlgo, normSet2);
 
-  Double_t central = static_cast<RooAbsReal&>(fIntL[0]).getVal();
-  std::cout << "Central value: " << central << std::endl;
-  value += central;
-
-  std::cout << "Found " << _coefList.getSize() << " coefficients" << std::endl;
-  for (int iCoef = 0; iCoef < _coefList.getSize(); ++iCoef) {
-    std::cout << "Processing coefficient " << iCoef << std::endl;
-    Double_t coefVal = static_cast<RooAbsReal&>(_coefList[iCoef]).getVal(normSet2) ;
-    RooAbsReal * funcIntUp = &(RooAbsReal&)fIntL[2 * iCoef + 1];
-    RooAbsReal * funcIntDn = &(RooAbsReal&)fIntL[2 * iCoef + 2];
-    value += interpolate(coefVal, central, funcIntUp, funcIntDn);
-  }
-  
   Double_t normVal(1) ;
   if (normSet2) {
-    RooArgList& fnl = cache->_funcNormList;
-    central = static_cast<RooAbsReal&>(fnl[0]).getVal(normSet2) ;
-    normVal = central;
-
-    for (int iCoef = 0; iCoef < _coefList.getSize(); ++iCoef) {
-      RooAbsReal *funcNormUp = &(RooAbsReal&)fnl[2 * iCoef + 1];
-      RooAbsReal *funcNormDn = &(RooAbsReal&)fnl[2 * iCoef + 2];
-      Double_t coefVal = static_cast<RooAbsReal&>(_coefList[iCoef]).getVal(normSet2) ;
-      normVal += interpolate(coefVal, central, funcNormUp, funcNormDn);
-    }
+    normVal = RooFit::Detail::MathFuncs::additiveInterpolate(_coefList, cache->_funcNormList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo, normSet2);
   }
 
   Double_t result = 0;

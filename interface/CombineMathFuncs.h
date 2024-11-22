@@ -225,37 +225,37 @@ inline Double_t interpolate(Double_t const coeff, Double_t const central, RooAbs
 }
 
 inline Double_t additiveInterpolate(RooArgList const& coefList, RooArgList const& funcList, Double_t const pdfFloorVal,
-                                    Double_t const quadraticRegion, Int_t const quadraticAlgo)
+                                    Double_t const quadraticRegion, Int_t const quadraticAlgo, const RooArgSet* normSet2=nullptr)
 {
-  // Do running sum of coef/func pairs, calculate lastCoef.
-  RooAbsReal* func = &(RooAbsReal&)funcList[0];
-  Double_t central = func->getVal();
-  Double_t value = central;
+   // Do running sum of coef/func pairs, calculate lastCoef.
+   RooAbsReal* func = &(RooAbsReal&)funcList[0];
+   Double_t central = func->getVal();
+   Double_t value = central;
 
-  for (int iCoef = 0; iCoef < coefList.getSize(); ++iCoef) {
-    Double_t coefVal = static_cast<RooAbsReal&>(coefList[iCoef]).getVal() ;
-    RooAbsReal* funcUp = &(RooAbsReal&)funcList[2 * iCoef + 1];
-    RooAbsReal* funcDn = &(RooAbsReal&)funcList[2 * iCoef + 2];
-    value += interpolate(coefVal, central, funcUp, funcDn, quadraticRegion, quadraticAlgo);
-  }
-  return ( value > 0. ? value : pdfFloorVal);
+   for (int iCoef = 0; iCoef < coefList.getSize(); ++iCoef) {
+      Double_t coefVal = static_cast<RooAbsReal&>(coefList[iCoef]).getVal(normSet2) ;
+      RooAbsReal* funcUp = &(RooAbsReal&)funcList[2 * iCoef + 1];
+      RooAbsReal* funcDn = &(RooAbsReal&)funcList[2 * iCoef + 2];
+      value += interpolate(coefVal, central, funcUp, funcDn, quadraticRegion, quadraticAlgo);
+   }
+   return ( value > 0. ? value : pdfFloorVal);
 }
 
 inline Double_t multiplicativeInterpolate(RooArgList const& coefList, RooArgList const& funcList, Double_t const pdfFloorVal,
-                                          Double_t const quadraticRegion, Int_t const quadraticAlgo)
+                                          Double_t const quadraticRegion, Int_t const quadraticAlgo, const RooArgSet* normSet2=nullptr)
 {
-  // Do running sum of coef/func pairs, calculate lastCoef.
-  RooAbsReal* func = &(RooAbsReal&)funcList[0];
-  Double_t central = func->getVal();
-  Double_t value = central;
+   // Do running sum of coef/func pairs, calculate lastCoef.
+   RooAbsReal* func = &(RooAbsReal&)funcList[0];
+   Double_t central = func->getVal();
+   Double_t value = central;
 
-  for (int iCoef = 0; iCoef < coefList.getSize(); ++iCoef) {
-    Double_t coefVal = static_cast<RooAbsReal&>(coefList[iCoef]).getVal() ;
-    RooAbsReal* funcUp = &(RooAbsReal&)funcList[2 * iCoef + 1];
-    RooAbsReal* funcDn = &(RooAbsReal&)funcList[2 * iCoef + 2];
-    value *= interpolate(coefVal, central, funcUp, funcDn, quadraticRegion, quadraticAlgo);
-  }
-  return ( value > 0. ? value : pdfFloorVal);
+   for (int iCoef = 0; iCoef < coefList.getSize(); ++iCoef) {
+      Double_t coefVal = static_cast<RooAbsReal&>(coefList[iCoef]).getVal(normSet2) ;
+      RooAbsReal* funcUp = &(RooAbsReal&)funcList[2 * iCoef + 1];
+      RooAbsReal* funcDn = &(RooAbsReal&)funcList[2 * iCoef + 2];
+      value *= interpolate(coefVal, central, funcUp, funcDn, quadraticRegion, quadraticAlgo);
+   }
+   return ( value > 0. ? value : pdfFloorVal);
 }
 
 } // namespace MathFuncs
