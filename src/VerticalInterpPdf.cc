@@ -102,9 +102,9 @@ Double_t VerticalInterpPdf::evaluate() const
   // Do running sum of coef/func pairs, calculate lastCoef.
   Double_t value = _pdfFloorVal;
   if (_quadraticAlgo >= 0) {
-    value = RooFit::Detail::MathFuncs::additiveInterpolate(_coefList, _funcList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo);
+    value = RooFit::Detail::MathFuncs::opInterpolate<std::plus<Double_t>>(_coefList, _funcList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo);
   } else {
-    value = RooFit::Detail::MathFuncs::multiplicativeInterpolate(_coefList, _funcList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo);
+    value = RooFit::Detail::MathFuncs::opInterpolate<std::multiplies<Double_t>>(_coefList, _funcList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo);
   }
   return value;
 }
@@ -253,6 +253,14 @@ RooAbsReal* VerticalInterpPdf::makeConditionalProdPdfIntegral(RooAbsPdf* pdf, Ro
   return intProd;
 }
 
+//_____________________________________________________________________________
+const RooArgList& VerticalInterpPdf::funcIntListFromCache() const
+{
+  // Return the list of integrals of the component functions
+  CacheElem* cache = (CacheElem*) _normIntMgr.getObjByIndex(0) ;
+  return cache->_funcIntList;
+}
+
 
 //_____________________________________________________________________________
 Double_t VerticalInterpPdf::analyticalIntegralWN(Int_t code, const RooArgSet* normSet2, const char* /*rangeName*/) const 
@@ -264,13 +272,13 @@ Double_t VerticalInterpPdf::analyticalIntegralWN(Int_t code, const RooArgSet* no
   if (code==0) return getVal(normSet2) ;
 
   // WVE needs adaptation for rangeName feature
-  CacheElem* cache = (CacheElem*) _normIntMgr.getObjByIndex(code-1) ;
-  RooArgList& fIntL = cache->_funcIntList;
-  Double_t value = RooFit::Detail::MathFuncs::additiveInterpolate(_coefList, fIntL, _pdfFloorVal, _quadraticRegion, _quadraticAlgo, normSet2);
+  const RooArgList& fIntL = funcIntListFromCache();
+  Double_t value = RooFit::Detail::MathFuncs::opInterpolate<std::plus<Double_t>>(_coefList, fIntL, _pdfFloorVal, _quadraticRegion, _quadraticAlgo, normSet2);
 
   Double_t normVal(1) ;
+  RooArgList& fNormL = ((CacheElem*)_normIntMgr.getObjByIndex(0))->_funcNormList;
   if (normSet2) {
-    normVal = RooFit::Detail::MathFuncs::additiveInterpolate(_coefList, cache->_funcNormList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo, normSet2);
+    normVal = RooFit::Detail::MathFuncs::opInterpolate<std::plus<Double_t>>(_coefList, fNormL, _pdfFloorVal, _quadraticRegion, _quadraticAlgo, normSet2);
   }
 
   Double_t result = 0;
@@ -280,7 +288,7 @@ Double_t VerticalInterpPdf::analyticalIntegralWN(Int_t code, const RooArgSet* no
 
 Double_t VerticalInterpPdf::interpolate(Double_t coeff, Double_t central, RooAbsReal *fUp, RooAbsReal *fDn) const  
 {
-  return RooFit::Detail::MathFuncs::interpolate(coeff, central, fUp, fDn, _quadraticRegion, _quadraticAlgo);
+  return RooFit::Detail::MathFuncs::interpolate(coeff, central, fUp->getVal(), fDn->getVal(), _quadraticRegion, _quadraticAlgo);
 }
 
 

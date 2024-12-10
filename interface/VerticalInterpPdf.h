@@ -22,6 +22,7 @@ public:
 
   Double_t evaluate() const override ;
   Bool_t checkObservables(const RooArgSet* nset) const override ;	
+  COMBINE_DECLARE_TRANSLATE
 
   Bool_t forceAnalyticalInt(const RooAbsArg&) const override { return kTRUE ; }
   Int_t getAnalyticalIntegralWN(RooArgSet& allVars, RooArgSet& numVars, const RooArgSet* normSet, const char* rangeName=0) const override ;
@@ -29,10 +30,14 @@ public:
   COMBINE_DECLARE_ANALYTICAL_INTEGRAL
 
   const RooArgList& funcList() const { return _funcList ; }
+  const RooArgList& funcIntListFromCache() const;
   const RooArgList& coefList() const { return _coefList ; }
 
   const Double_t quadraticRegion() const { return _quadraticRegion; }
   const Int_t quadraticAlgo() const { return _quadraticAlgo; }
+
+  const Double_t pdfFloorVal() const { return _pdfFloorVal; }
+  const Double_t integralFloorVal() const { return _integralFloorVal; }
 
   void setFloorVals(Double_t const& pdf_val, Double_t const& integral_val);
 
@@ -64,6 +69,7 @@ protected:
   ClassDefOverride(VerticalInterpPdf,3) // PDF constructed from a sum of (non-pdf) functions
 };
 
+COMBINE_DECLARE_CODEGEN_IMPL(VerticalInterpPdf);
 COMBINE_DECLARE_CODEGEN_INTEGRAL_IMPL(VerticalInterpPdf);
 
 #endif

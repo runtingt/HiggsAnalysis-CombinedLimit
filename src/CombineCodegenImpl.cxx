@@ -6,6 +6,7 @@
 #include "../interface/ProcessNormalization.h"
 #include "../interface/VerticalInterpHistPdf.h"
 #include "../interface/VerticalInterpPdf.h"
+#include "../interface/CombineMathFuncs.h"
 
 #include <RooUniformBinning.h>
 
@@ -208,10 +209,31 @@ CODEGEN_IMPL(FastVerticalInterpHistPdf2D2) {
   ctx.addResult(&arg, arrName + "[" + binIdx.str() + "]");
 }
 
+CODEGEN_IMPL(VerticalInterpPdf) {
+  ARG_VAR;
+  ctx.addResult(&arg,
+                ctx.buildCall("RooFit::Detail::MathFuncs::verticalInterpolate",
+                              arg.coefList(),
+                              arg.coefList().size(),
+                              arg.funcList(),
+                              arg.funcList().size(),
+                              arg.pdfFloorVal(),
+                              arg.quadraticRegion(),
+                              arg.quadraticAlgo()));
+
+}
+
 CODEGEN_INTEGRAL_IMPL(VerticalInterpPdf) {
   ARG_VAR;
-
-  return "1.0";
+  return ctx.buildCall("RooFit::Detail::MathFuncs::verticalInterpPdfIntegral",
+                       arg.coefList(),
+                       arg.coefList().size(),
+                       arg.funcIntListFromCache(),
+                       arg.funcIntListFromCache().size(),
+                       arg.pdfFloorVal(),
+                       arg.integralFloorVal(),
+                       arg.quadraticRegion(),
+                       arg.quadraticAlgo());
 }
 
 #if ROOT_VERSION_CODE >= ROOT_VERSION(6,35,0)
