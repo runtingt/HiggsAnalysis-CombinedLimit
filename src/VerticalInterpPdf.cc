@@ -87,7 +87,7 @@ VerticalInterpPdf::VerticalInterpPdf(const VerticalInterpPdf& other, const char*
 Double_t VerticalInterpPdf::evaluate() const 
 {
   // Do running sum of coef/func pairs, calculate lastCoef.
-  Double_t value = _pdfFloorVal;
+  Double_t value;
   if (_quadraticAlgo >= 0) {
     value = RooFit::Detail::MathFuncs::opInterpolate<std::plus<Double_t>>(_coefList, _funcList, _pdfFloorVal, _quadraticRegion, _quadraticAlgo);
   } else {

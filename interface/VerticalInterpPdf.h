@@ -35,8 +35,8 @@ public:
   const Double_t quadraticRegion() const { return _quadraticRegion; }
   const Int_t quadraticAlgo() const { return _quadraticAlgo; }
 
-  const Double_t pdfFloorVal() const { return _pdfFloorVal; }
-  const Double_t integralFloorVal() const { return _integralFloorVal; }
+  Double_t pdfFloorVal() const { return _pdfFloorVal; }
+  Double_t integralFloorVal() const { return _integralFloorVal; }
 
   void setFloorVals(Double_t const& pdf_val, Double_t const& integral_val);
 
