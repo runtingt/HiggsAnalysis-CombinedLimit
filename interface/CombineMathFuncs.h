@@ -226,6 +226,54 @@ inline Double_t interpolate(Double_t const coeff, Double_t const central, Double
       Double_t b = 0.125 * cnorm * (cnorm2 * (3.*cnorm2 - 10.) + 15.);
       Double_t result = a*(diff + b*sum);
       return result;
+   } if (quadraticAlgo == 1) { 
+      // quadratic interpolation that is everywhere differentiable, but it's not null at zero
+      // conditions on the function
+      //   c_up (+quadraticRegion) = +quadraticRegion
+      //   c_cen(+quadraticRegion) = -quadraticRegion
+      //   c_dn (+quadraticRegion) = 0
+      //   c_up (-quadraticRegion) = 0 
+      //   c_cen(-quadraticRegion) = -quadraticRegion
+      //   c_dn (-quadraticRegion) = +quadraticRegion
+      // conditions on the derivatives
+      //   c_up '(+quadraticRegion) = +1
+      //   c_cen'(+quadraticRegion) = -1
+      //   c_dn '(+quadraticRegion) = 0
+      //   c_up '(-quadraticRegion) = 0
+      //   c_cen'(-quadraticRegion) = +1
+      //   c_dn '(-quadraticRegion) = -1
+      Double_t c_up  = (quadraticRegion + coeff) * (quadraticRegion + coeff) / (4 * quadraticRegion);
+      Double_t c_dn  = (quadraticRegion - coeff) * (quadraticRegion - coeff) / (4 * quadraticRegion);
+      Double_t c_cen = - c_up - c_dn;
+      return (c_up * fUp) + (c_dn * fDn) + (c_cen * central);
+   } else/* if (quadraticAlgo == 1)*/ {
+      // P(6) interpolation that is everywhere differentiable and null at zero
+      /* === how the algorithm works, in theory ===
+      * let  dhi = h_hi - h_nominal
+      *      dlo = h_lo - h_nominal
+      * and x be the morphing parameter
+      * we define alpha = x * 0.5 * ((dhi-dlo) + (dhi+dlo)*smoothStepFunc(x));
+      * which satisfies:
+      *     alpha(0) = 0
+      *     alpha(+1) = dhi
+      *     alpha(-1) = dlo
+      *     alpha(x >= +1) = |x|*dhi
+      *     alpha(x <= -1) = |x|*dlo
+      *     alpha is continuous and has continuous first and second derivative, as smoothStepFunc has them
+      * === and in practice ===
+      * we already have computed the histogram for diff=(dhi-dlo) and sum=(dhi+dlo)
+      * so we just do template += (0.5 * x) * (diff + smoothStepFunc(x) * sum)
+      * ========================================== */
+      Double_t cnorm = coeff/quadraticRegion;
+      Double_t cnorm2 = pow(cnorm, 2);
+      Double_t hi = fUp - central;
+      Double_t lo = fDn - central;
+      Double_t sum = hi+lo;
+      Double_t diff = hi-lo;
+      Double_t a = coeff/2.; // cnorm*quadraticRegion
+      Double_t b = 0.125 * cnorm * (cnorm2 * (3.*cnorm2 - 10.) + 15.);
+      Double_t result = a*(diff + b*sum);
+      return result;
    }
 }
 
