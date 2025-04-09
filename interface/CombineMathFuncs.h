@@ -5,6 +5,7 @@
 #include <RooArgList.h>
 #include <RooArgSet.h>
 #include <RooConstVar.h>
+#include <RtypesCore.h>
 
 #include <cmath>
 
@@ -176,7 +177,7 @@ inline Double_t interpolate(Double_t const coeff, Double_t const central, Double
       Double_t c_up  = + coeff * (quadraticRegion + coeff) / (2 * quadraticRegion);
       Double_t c_dn  = - coeff * (quadraticRegion - coeff) / (2 * quadraticRegion);
       Double_t c_cen = - coeff * coeff / quadraticRegion;
-      return c_up * fUp + c_dn * fDn + c_cen * central;
+      return (c_up * fUp) + (c_dn * fDn) + (c_cen * central);
    } else if (quadraticAlgo == 1) { 
       // quadratic interpolation that is everywhere differentiable, but it's not null at zero
       // conditions on the function
@@ -196,7 +197,7 @@ inline Double_t interpolate(Double_t const coeff, Double_t const central, Double
       Double_t c_up  = (quadraticRegion + coeff) * (quadraticRegion + coeff) / (4 * quadraticRegion);
       Double_t c_dn  = (quadraticRegion - coeff) * (quadraticRegion - coeff) / (4 * quadraticRegion);
       Double_t c_cen = - c_up - c_dn;
-      return c_up * fUp + c_dn * fDn + c_cen * central;
+      return (c_up * fUp) + (c_dn * fDn) + (c_cen * central);
    } else/* if (quadraticAlgo == 1)*/ {
       // P(6) interpolation that is everywhere differentiable and null at zero
       /* === how the algorithm works, in theory ===
@@ -233,16 +234,16 @@ inline Double_t opInterpolate(RooArgList const& coefList, RooArgList const& func
                                     Double_t const quadraticRegion, Int_t const quadraticAlgo, const RooArgSet* normSet2=nullptr)
 {
    // Do running sum of coef/func pairs, calculate lastCoef.
-   RooAbsReal* func = &(RooAbsReal&)funcList[0];
+   RooAbsReal* func = &dynamic_cast<RooAbsReal&>(funcList[0]);
    Double_t central = func->getVal();
    Double_t value = central;
 
    Operation op;
 
    for (int iCoef = 0; iCoef < coefList.getSize(); ++iCoef) {
-      Double_t coefVal = static_cast<RooAbsReal&>(coefList[iCoef]).getVal(normSet2) ;
-      RooAbsReal* funcUp = &(RooAbsReal&)funcList[2 * iCoef + 1];
-      RooAbsReal* funcDn = &(RooAbsReal&)funcList[2 * iCoef + 2];
+      Double_t coefVal = dynamic_cast<RooAbsReal&>(coefList[iCoef]).getVal(normSet2);
+      RooAbsReal* funcUp = &dynamic_cast<RooAbsReal&>(funcList[(2 * iCoef) + 1]);
+      RooAbsReal* funcDn = &dynamic_cast<RooAbsReal&>(funcList[(2 * iCoef) + 2]);
       value = op(value, interpolate(coefVal, central, funcUp->getVal(), funcDn->getVal(), quadraticRegion, quadraticAlgo));
    }
    return ( value > 0. ? value : pdfFloorVal);
@@ -257,8 +258,8 @@ inline Double_t additiveInterpolate(double const* coefList, std::size_t nCoeffs,
 
    for (std::size_t iCoef = 0; iCoef < nCoeffs; ++iCoef) {
       double coefVal = coefList[iCoef];
-      double funcUp = funcList[2 * iCoef + 1];
-      double funcDn = funcList[2 * iCoef + 2];
+      double funcUp = funcList[(2 * iCoef) + 1];
+      double funcDn = funcList[(2 * iCoef) + 2];
       value += interpolate(coefVal, central, funcUp, funcDn, quadraticRegion, quadraticAlgo);
    }
    return ( value > 0. ? value : pdfFloorVal);
@@ -273,8 +274,8 @@ inline Double_t multiplicativeInterpolate(double const* coefList, std::size_t nC
 
    for (std::size_t iCoef = 0; iCoef < nCoeffs; ++iCoef) {
       double coefVal = coefList[iCoef];
-      double funcUp = funcList[2 * iCoef + 1];
-      double funcDn = funcList[2 * iCoef + 2];
+      double funcUp = funcList[(2 * iCoef) + 1];
+      double funcDn = funcList[(2 * iCoef) + 2];
       value *= interpolate(coefVal, central, funcUp, funcDn, quadraticRegion, quadraticAlgo);
    }
    return ( value > 0. ? value : pdfFloorVal);

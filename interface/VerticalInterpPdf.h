@@ -7,6 +7,7 @@
 #include "RooAbsPdf.h"
 #include "RooListProxy.h"
 #include "RooObjCacheManager.h"
+#include "RtypesCore.h"
 
 #include "CombineCodegenImpl.h"
 
