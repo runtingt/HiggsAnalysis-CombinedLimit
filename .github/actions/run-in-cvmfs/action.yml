@@ -15,7 +15,7 @@ runs:
       with:
         image: ${{ env.IMAGE }}
         shell: bash
-        options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }}
+        options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }}
         run: >-
           cp -r cmssw/${CMSSW_VERSION} .;
           cd /home/cmsusr/${CMSSW_VERSION}/src;
@@ -24,7 +24,20 @@ runs:
           ulimit -s unlimited;
           cd HiggsAnalysis/CombinedLimit;
           ${{ inputs.script }}
+          # Copy outputs (if they exist) to /tmp for extraction
+          if [ -d outputs ]; then
+            mkdir -p /tmp/outputs
+            cp -r outputs/* /tmp/outputs/ || true
+          fi
 
+    # Copy results back on the host
+    - name: Copy outputs from container
+      if: ${{ env.IMAGE != '' && always()}}
+      shell: bash
+      run: |
+        docker_id=$(docker ps -alq)
+        mkdir -p outputs
+        docker cp "$docker_id":/tmp/outputs ./ || echo "No outputs to copy."
 
     # Case 2: Run directly on the GitHub runner if no image is provided and assume LCG
     - name: Run command on host
