@@ -9,16 +9,23 @@ runs:
   using: "composite"
   steps:
     # Case 1: Run inside a Docker container if image is provided and assume CMSSW
+    - name: Capture host UID/GID
+      if: ${{ env.IMAGE != '' }}
+      shell: bash
+      run: |
+        echo "HOST_UID=$(id -u)" >> "$GITHUB_ENV"
+        echo "HOST_GID=$(id -g)" >> "$GITHUB_ENV"
+
     - name: Run command inside container
       if: ${{ env.IMAGE != '' }}
       uses: rhaschke/docker-run-action@v5
       with:
         image: ${{ env.IMAGE }}
         shell: bash
-        options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }}
+        options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }} --user ${{ env.HOST_UID }}:${{ env.HOST_GID }}
         run: |
           ${{ inputs.script }}
-          cp -r outputs /workspace/outputs
+          cp -r outputs/* /workspace/outputs/
 
     # Case 2: Run directly on the GitHub runner if no image is provided and assume LCG
     - name: Run command on host
