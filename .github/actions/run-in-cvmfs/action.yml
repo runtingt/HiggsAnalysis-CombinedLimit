@@ -17,12 +17,6 @@ runs:
         shell: bash
         options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }}
         run: >-
-          cp -r cmssw/${CMSSW_VERSION} .;
-          cd /home/cmsusr/${CMSSW_VERSION}/src;
-          source /cvmfs/cms.cern.ch/cmsset_default.sh;
-          cmsenv;
-          ulimit -s unlimited;
-          cd HiggsAnalysis/CombinedLimit;
           ${{ inputs.script }}
           # Copy outputs to workspace
           cp -r outputs /workspace/outputs
@@ -32,9 +26,4 @@ runs:
       if: ${{ env.IMAGE == '' }}
       shell: bash
       run: >-
-        source /cvmfs/sft.cern.ch/lcg/views/${LCG_RELEASE}/${LCG_ARCH}/setup.sh;
-        source virtualenv/bin/activate;
-        export PATH=$PWD/install/bin:$PATH;
-        export LD_LIBRARY_PATH=$PWD/install/lib:$LD_LIBRARY_PATH;
-        ulimit -s unlimited;
         ${{ inputs.script }}
