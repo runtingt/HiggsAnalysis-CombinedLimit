@@ -24,7 +24,7 @@ runs:
       with:
         image: ${{ env.IMAGE }}
         shell: bash
-        options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }} --user ${{ env.HOST_UID }}:${{ env.HOST_GID }}
+        options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }}
         run: |
           ${{ inputs.script }}
 
