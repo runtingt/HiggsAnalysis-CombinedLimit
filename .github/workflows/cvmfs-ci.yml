@@ -113,7 +113,7 @@ jobs:
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard
         with:
-          script: |
+          script: |-
             mkdir -p outputs/counting outputs/counting_codegen
             touch higgsCombineTest.MultiDimFit.mH120.root
             mv higgsCombine*.root outputs/counting/
