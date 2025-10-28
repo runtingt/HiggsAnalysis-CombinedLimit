@@ -16,14 +16,13 @@ runs:
         image: ${{ env.IMAGE }}
         shell: bash
         options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }}
-        run: >-
+        run: |
           ${{ inputs.script }}
-          # Copy outputs to workspace
           cp -r outputs /workspace/outputs
 
     # Case 2: Run directly on the GitHub runner if no image is provided and assume LCG
     - name: Run command on host
       if: ${{ env.IMAGE == '' }}
       shell: bash
-      run: >-
+      run: |
         ${{ inputs.script }}

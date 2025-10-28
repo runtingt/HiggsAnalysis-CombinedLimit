@@ -117,10 +117,7 @@ jobs:
             mkdir -p outputs/counting outputs/counting_codegen
             touch higgsCombineTest.MultiDimFit.mH120.root
             mv higgsCombine*.root outputs/counting/
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
-              touch higgsCombineTest.CodeGen.mH120.root
-              mv higgsCombine*.root outputs/counting_codegen/
-            fi
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then touch higgsCombineTest.CodeGen.mH120.root; mv higgsCombine*.root outputs/counting_codegen/; fi
 
       - name: Prepare artifact name
         id: artifact_name
