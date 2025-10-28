@@ -23,25 +23,36 @@ jobs:
             CMSSW_VERSION: "CMSSW_14_1_0_pre4"
             SCRAM_ARCH: "el9_amd64_gcc12"
             ROOT: "6.30.07"
+            SUPPORTS_NEW_FEATURE: false
           - IMAGE: "cmscloud/cc7-cms"
             CMSSW_VERSION: "CMSSW_11_3_4"
             SCRAM_ARCH: "slc7_amd64_gcc900"
             ROOT: "6.22.09"
+            SUPPORTS_NEW_FEATURE: false
           - IMAGE: "cmscloud/al9-cms"
             CMSSW_VERSION: "CMSSW_14_0_0_pre1"
             SCRAM_ARCH: "el9_amd64_gcc12"
             ROOT: "6.26.11"
+            SUPPORTS_NEW_FEATURE: false
           - IMAGE: "cmscloud/al8-cms"
             CMSSW_VERSION: "CMSSW_14_2_0_pre2_ROOT632"
             SCRAM_ARCH: "el8_amd64_gcc12"
             ROOT: "6.32.06"
+            SUPPORTS_NEW_FEATURE: false
           - LCG_RELEASE: "LCG_108"
             LCG_ARCH: "x86_64-ubuntu2404-gcc13-opt"
             ROOT: "6.36.02"
+            SUPPORTS_NEW_FEATURE: true
           - LCG_RELEASE: "dev3/latest"
             LCG_ARCH: "x86_64-ubuntu2404-gcc13-opt"
             ROOT: "LCG master"
+            SUPPORTS_NEW_FEATURE: true
         new_feature: [true, false]
+        exclude:
+          # Exclude older versions of ROOT that don't support new_feature
+          - config:
+              SUPPORTS_NEW_FEATURE: false
+            new_feature: true
     name:  ${{ matrix.config.CMSSW_VERSION || matrix.config.LCG_RELEASE }} - ROOT ${{ matrix.config.ROOT }} - NewFeature ${{ matrix.new_feature }}
     env:
       CMSSW_VERSION: ${{ matrix.config.CMSSW_VERSION }}
