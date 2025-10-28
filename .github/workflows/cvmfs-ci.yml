@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
+        include:
           - IMAGE: "cmscloud/al9-cms"
             CMSSW_VERSION: "CMSSW_14_1_0_pre4"
             SCRAM_ARCH: "el9_amd64_gcc12"
@@ -47,13 +47,13 @@ jobs:
             LCG_ARCH: "x86_64-ubuntu2404-gcc13-opt"
             ROOT: "LCG master"
             SUPPORTS_CODEGEN: true
-    name:  ${{ matrix.config.CMSSW_VERSION || matrix.config.LCG_RELEASE }} - ROOT ${{ matrix.config.ROOT }}
+    name: ${{ matrix.CMSSW_VERSION || matrix.LCG_RELEASE }} - ROOT ${{ matrix.ROOT }}
     env:
-      CMSSW_VERSION: ${{ matrix.config.CMSSW_VERSION }}
-      IMAGE: ${{ matrix.config.IMAGE }}
-      LCG_RELEASE: ${{ matrix.config.LCG_RELEASE }}
-      LCG_ARCH: ${{ matrix.config.LCG_ARCH }}
-      SUPPORTS_CODEGEN: ${{ matrix.config.SUPPORTS_CODEGEN }}
+      CMSSW_VERSION: ${{ matrix.CMSSW_VERSION }}
+      IMAGE: ${{ matrix.IMAGE }}
+      LCG_RELEASE: ${{ matrix.LCG_RELEASE }}
+      LCG_ARCH: ${{ matrix.LCG_ARCH }}
+      SUPPORTS_CODEGEN: ${{ matrix.SUPPORTS_CODEGEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -64,8 +64,8 @@ jobs:
       - name: Build Combine (LCG)
         if: ${{ env.CMSSW_VERSION == '' }}
         env:
-          LCG_RELEASE: ${{ matrix.config.LCG_RELEASE }}
-          LCG_ARCH: ${{ matrix.config.LCG_ARCH }}
+          LCG_RELEASE: ${{ matrix.LCG_RELEASE }}
+          LCG_ARCH: ${{ matrix.LCG_ARCH }}
         run: >-
           source /cvmfs/sft.cern.ch/lcg/views/${LCG_RELEASE}/${LCG_ARCH}/setup.sh;
           root --version;
@@ -94,9 +94,9 @@ jobs:
         # Only run the CMSSW build step if the CMSSW_VERSION is defined. Otherwise we build for LCG.
         if: ${{ env.CMSSW_VERSION != '' }}
         with:
-          image: ${{ matrix.config.IMAGE }}
+          image: ${{ matrix.IMAGE }}
           shell: bash
-          options: -v /cvmfs:/cvmfs:shared -v ${{ github.workspace }}:/work/CombinedLimit  --mount source=cmsusr,destination=/home/cmsusr -w /home/cmsusr -e CMSSW_VERSION=${{ matrix.config.CMSSW_VERSION }} -e SCRAM_ARCH=${{ matrix.config.SCRAM_ARCH }}
+          options: -v /cvmfs:/cvmfs:shared -v ${{ github.workspace }}:/work/CombinedLimit  --mount source=cmsusr,destination=/home/cmsusr -w /home/cmsusr -e CMSSW_VERSION=${{ matrix.CMSSW_VERSION }} -e SCRAM_ARCH=${{ matrix.SCRAM_ARCH }}
           run: |
             cd /home/cmsusr/
             source /cvmfs/cms.cern.ch/cmsset_default.sh
@@ -113,29 +113,30 @@ jobs:
       - name: Get output directory
         id: get_output_dir
         run: |
-          if [ "${{ env.CMSSW_VERSION }}" != "" ]; then
-            echo "OUTPUT_DIR=${{ github.workspace }}/outputs" >> "$GITHUB_ENV"
+          if [ "${{ env.CMSSW_VERSION }}" == "" ]; then
+            echo "OUTPUT_DIR=${{ github.workspace }}/outputs" >> "$GITHUB_OUTPUT"
           else
-            echo "OUTPUT_DIR=/workspace/outputs" >> "$GITHUB_ENV"
+            echo "OUTPUT_DIR=/workspace/outputs" >> "$GITHUB_OUTPUT"
           fi
-      
+
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1"
-            OUTDIR = ${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
+            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
+            echo "Using output directory: $OUTDIR"
             mkdir -p $OUTDIR/counting $OUTDIR/counting_codegen
             text2workspace.py  data/tutorials/multiDim/toy-hgg-125.txt -m 125 -P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH
-            $COMBINE_COMMAND;
+            $COMBINE_COMMAND
             mv higgsCombine*.root $OUTDIR/counting
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then ; $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/counting_codegen/; fi
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/counting_codegen/; fi
 
       - name: Prepare artifact name
         id: artifact_name
         run: |
-          SAFE_NAME=$(echo "${{ matrix.config.CMSSW_VERSION || matrix.config.LCG_RELEASE }}" | tr '/' '_')
-          SAFE_ROOT=$(echo "${{ matrix.config.ROOT }}" | tr ' /' '_')
+          SAFE_NAME=$(echo "${{ matrix.CMSSW_VERSION || matrix.LCG_RELEASE }}" | tr '/' '_')
+          SAFE_ROOT=$(echo "${{ matrix.ROOT }}" | tr ' /' '_')
           echo "name=outputs-${SAFE_NAME}-ROOT${SAFE_ROOT}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
