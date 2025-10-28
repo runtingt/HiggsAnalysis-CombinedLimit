@@ -15,6 +15,8 @@ runs:
       run: |
         echo "HOST_UID=$(id -u)" >> "$GITHUB_ENV"
         echo "HOST_GID=$(id -g)" >> "$GITHUB_ENV"
+        mkdir -p outputs
+        chmod 777 outputs
 
     - name: Run command inside container
       if: ${{ env.IMAGE != '' }}
@@ -25,7 +27,6 @@ runs:
         options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }} --user ${{ env.HOST_UID }}:${{ env.HOST_GID }}
         run: |
           ${{ inputs.script }}
-          cp -r outputs/* /workspace/outputs/
 
     # Case 2: Run directly on the GitHub runner if no image is provided and assume LCG
     - name: Run command on host

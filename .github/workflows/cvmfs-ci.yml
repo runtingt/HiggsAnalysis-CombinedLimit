@@ -114,10 +114,12 @@ jobs:
         name: Counting datacard
         with:
           script: |-
-            mkdir -p outputs/counting outputs/counting_codegen
-            touch higgsCombineTest.MultiDimFit.mH120.root
-            mv higgsCombine*.root outputs/counting/
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then touch higgsCombineTest.CodeGen.mH120.root; mv higgsCombine*.root outputs/counting_codegen/; fi
+            ls -lah /workspace
+            ls -lah /workspace/outputs
+            mkdir -p /workspace/outputs/counting /workspace/outputs/counting_codegen
+            touch /workspace/higgsCombineTest.MultiDimFit.mH120.root
+            mv /workspace/higgsCombineTest.MultiDimFit.mH120.root /workspace/outputs/counting/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then touch /workspace/higgsCombineTest.CodeGen.mH120.root; mv /workspace/higgsCombineTest.MultiDimFit.mH120.root /workspace/outputs/counting_codegen/; fi
 
       - name: Prepare artifact name
         id: artifact_name
