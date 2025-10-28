@@ -16,33 +16,16 @@ runs:
         image: ${{ env.IMAGE }}
         shell: bash
         options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }}
-        run: |
-          set -euo pipefail
-          cp -r cmssw/${CMSSW_VERSION} .
-          cd /home/cmsusr/${CMSSW_VERSION}/src
-          source /cvmfs/cms.cern.ch/cmsset_default.sh
-          cmsenv
-          ulimit -s unlimited
-          cd HiggsAnalysis/CombinedLimit
-          cat <<'EOS' >/tmp/cvmfs-script.sh
-          set -euo pipefail
+        run: >-
+          cp -r cmssw/${CMSSW_VERSION} .;
+          cd /home/cmsusr/${CMSSW_VERSION}/src;
+          source /cvmfs/cms.cern.ch/cmsset_default.sh;
+          cmsenv;
+          ulimit -s unlimited;
+          cd HiggsAnalysis/CombinedLimit;
           ${{ inputs.script }}
-          EOS
-          bash /tmp/cvmfs-script.sh
-          if [ -d outputs ]; then
-            mkdir -p /workspace/.cvmfs-output
-            cp -a outputs/. /workspace/.cvmfs-output/
-          fi
-
-    - name: Collect container outputs
-      if: ${{ env.IMAGE != '' && always() }}
-      shell: bash
-      run: |
-        if [ -d .cvmfs-output ]; then
-          mkdir -p outputs
-          cp -a .cvmfs-output/. outputs/
-          rm -rf .cvmfs-output
-        fi
+          # Copy outputs to workspace
+          cp -r outputs /workspace/outputs
 
     # Case 2: Run directly on the GitHub runner if no image is provided and assume LCG
     - name: Run command on host
