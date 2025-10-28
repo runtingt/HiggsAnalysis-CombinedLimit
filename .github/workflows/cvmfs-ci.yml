@@ -61,65 +61,75 @@ jobs:
         with:
           cvmfs_repositories: ${{ (env.CMSSW_VERSION != '') && 'cms.cern.ch' || 'sft.cern.ch' }}
 
-      # - name: Build Combine (LCG)
-      #   if: ${{ env.CMSSW_VERSION == '' }}
-      #   env:
-      #     LCG_RELEASE: ${{ matrix.config.LCG_RELEASE }}
-      #     LCG_ARCH: ${{ matrix.config.LCG_ARCH }}
-      #   run: >-
-      #     source /cvmfs/sft.cern.ch/lcg/views/${LCG_RELEASE}/${LCG_ARCH}/setup.sh;
-      #     root --version;
-      #     mkdir -p .python/HiggsAnalysis;
-      #     ln -s $PWD/python $PWD/.python/HiggsAnalysis/CombinedLimit;
-      #     touch $PWD/.python/HiggsAnalysis/__init__.py;
-      #     touch $PWD/.python/HiggsAnalysis/CombinedLimit/__init__.py;
-      #     python3 -m venv virtualenv;
-      #     source virtualenv/bin/activate;
-      #     python3 -m pip install -e .;
-      #     mkdir build;
-      #     cd build;
-      #     cmake -DCMAKE_CXX_COMPILER=$COMPILER_PATH/bin/g++ \
-      #           -DCMAKE_C_COMPILER=$COMPILER_PATH/bin/gcc \
-      #           -DCMAKE_INSTALL_PREFIX=../install \
-      #           -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-      #           -DINSTALL_PYTHON=FALSE \
-      #           ..;
-      #     make install -j$(nproc);
-      #     cd ..;
-      #     export PATH=$PWD/install/bin:$PATH;
-      #     export LD_LIBRARY_PATH=$PWD/install/lib:$LD_LIBRARY_PATH;
+      - name: Build Combine (LCG)
+        if: ${{ env.CMSSW_VERSION == '' }}
+        env:
+          LCG_RELEASE: ${{ matrix.config.LCG_RELEASE }}
+          LCG_ARCH: ${{ matrix.config.LCG_ARCH }}
+        run: >-
+          source /cvmfs/sft.cern.ch/lcg/views/${LCG_RELEASE}/${LCG_ARCH}/setup.sh;
+          root --version;
+          mkdir -p .python/HiggsAnalysis;
+          ln -s $PWD/python $PWD/.python/HiggsAnalysis/CombinedLimit;
+          touch $PWD/.python/HiggsAnalysis/__init__.py;
+          touch $PWD/.python/HiggsAnalysis/CombinedLimit/__init__.py;
+          python3 -m venv virtualenv;
+          source virtualenv/bin/activate;
+          python3 -m pip install -e .;
+          mkdir build;
+          cd build;
+          cmake -DCMAKE_CXX_COMPILER=$COMPILER_PATH/bin/g++ \
+                -DCMAKE_C_COMPILER=$COMPILER_PATH/bin/gcc \
+                -DCMAKE_INSTALL_PREFIX=../install \
+                -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                -DINSTALL_PYTHON=FALSE \
+                ..;
+          make install -j$(nproc);
+          cd ..;
+          export PATH=$PWD/install/bin:$PATH;
+          export LD_LIBRARY_PATH=$PWD/install/lib:$LD_LIBRARY_PATH;
 
-      # - uses: rhaschke/docker-run-action@v5
-      #   name: Build Combine (CMSSW)
-      #   # Only run the CMSSW build step if the CMSSW_VERSION is defined. Otherwise we build for LCG.
-      #   if: ${{ env.CMSSW_VERSION != '' }}
-      #   with:
-      #     image: ${{ matrix.config.IMAGE }}
-      #     shell: bash
-      #     options: -v /cvmfs:/cvmfs:shared -v ${{ github.workspace }}:/work/CombinedLimit  --mount source=cmsusr,destination=/home/cmsusr -w /home/cmsusr -e CMSSW_VERSION=${{ matrix.config.CMSSW_VERSION }} -e SCRAM_ARCH=${{ matrix.config.SCRAM_ARCH }}
-      #     run: |
-      #       cd /home/cmsusr/
-      #       source /cvmfs/cms.cern.ch/cmsset_default.sh
-      #       scram project ${CMSSW_VERSION}
-      #       cd ${CMSSW_VERSION}/src
-      #       cmsenv
-      #       mkdir -p HiggsAnalysis
-      #       cp -r /work/CombinedLimit HiggsAnalysis/
-      #       scramv1 b -j$(nproc)
-      #       echo ${PATH}
-      #       root --version
-      #       combine --help
+      - uses: rhaschke/docker-run-action@v5
+        name: Build Combine (CMSSW)
+        # Only run the CMSSW build step if the CMSSW_VERSION is defined. Otherwise we build for LCG.
+        if: ${{ env.CMSSW_VERSION != '' }}
+        with:
+          image: ${{ matrix.config.IMAGE }}
+          shell: bash
+          options: -v /cvmfs:/cvmfs:shared -v ${{ github.workspace }}:/work/CombinedLimit  --mount source=cmsusr,destination=/home/cmsusr -w /home/cmsusr -e CMSSW_VERSION=${{ matrix.config.CMSSW_VERSION }} -e SCRAM_ARCH=${{ matrix.config.SCRAM_ARCH }}
+          run: |
+            cd /home/cmsusr/
+            source /cvmfs/cms.cern.ch/cmsset_default.sh
+            scram project ${CMSSW_VERSION}
+            cd ${CMSSW_VERSION}/src
+            cmsenv
+            mkdir -p HiggsAnalysis
+            cp -r /work/CombinedLimit HiggsAnalysis/
+            scramv1 b -j$(nproc)
+            echo ${PATH}
+            root --version
+            combine --help
 
+      - name: Get output directory
+        id: get_output_dir
+        run: |
+          if [ "${{ env.CMSSW_VERSION }}" != "" ]; then
+            echo "OUTPUT_DIR=${{ github.workspace }}/outputs" >> "$GITHUB_ENV"
+          else
+            echo "OUTPUT_DIR=/workspace/outputs" >> "$GITHUB_ENV"
+          fi
+      
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard
         with:
           script: |-
-            ls -lah /workspace
-            ls -lah /workspace/outputs
-            mkdir -p /workspace/outputs/counting /workspace/outputs/counting_codegen
-            touch /workspace/higgsCombineTest.MultiDimFit.mH120.root
-            mv /workspace/higgsCombineTest.MultiDimFit.mH120.root /workspace/outputs/counting/
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then touch /workspace/higgsCombineTest.CodeGen.mH120.root; mv /workspace/higgsCombineTest.MultiDimFit.mH120.root /workspace/outputs/counting_codegen/; fi
+            COMBINE_COMMAND="combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1"
+            OUTDIR = ${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
+            mkdir -p $OUTDIR/counting $OUTDIR/counting_codegen
+            text2workspace.py  data/tutorials/multiDim/toy-hgg-125.txt -m 125 -P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH
+            $COMBINE_COMMAND;
+            mv higgsCombine*.root $OUTDIR/counting
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then ; $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/counting_codegen/; fi
 
       - name: Prepare artifact name
         id: artifact_name

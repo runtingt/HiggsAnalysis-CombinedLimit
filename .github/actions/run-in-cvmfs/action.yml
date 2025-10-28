@@ -25,12 +25,24 @@ runs:
         image: ${{ env.IMAGE }}
         shell: bash
         options: -v /cvmfs:/cvmfs:shared -v cmsusr:/home/cmsusr/cmssw/:ro -v ${{ github.workspace }}:/workspace:rw -w /home/cmsusr/ -e CMSSW_VERSION=${{ env.CMSSW_VERSION }}
-        run: |
+        run: >-
+          cp -r cmssw/${CMSSW_VERSION} .;
+          cd /home/cmsusr/${CMSSW_VERSION}/src;
+          source /cvmfs/cms.cern.ch/cmsset_default.sh;
+          cmsenv;
+          ulimit -s unlimited;
+          cd HiggsAnalysis/CombinedLimit;
           ${{ inputs.script }}
 
     # Case 2: Run directly on the GitHub runner if no image is provided and assume LCG
     - name: Run command on host
       if: ${{ env.IMAGE == '' }}
       shell: bash
-      run: |
+      run: >-
+        cp -r cmssw/${CMSSW_VERSION} .;
+        cd /home/cmsusr/${CMSSW_VERSION}/src;
+        source /cvmfs/cms.cern.ch/cmsset_default.sh;
+        cmsenv;
+        ulimit -s unlimited;
+        cd HiggsAnalysis/CombinedLimit;
         ${{ inputs.script }}
