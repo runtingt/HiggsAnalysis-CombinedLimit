@@ -47,19 +47,13 @@ jobs:
             LCG_ARCH: "x86_64-ubuntu2404-gcc13-opt"
             ROOT: "LCG master"
             SUPPORTS_CODEGEN: true
-        codegen: [true, false]
-        exclude:
-          # Exclude older versions of ROOT that don't support AD
-          - config:
-              SUPPORTS_CODEGEN: false
-            codegen: true
-    name:  ${{ matrix.config.CMSSW_VERSION || matrix.config.LCG_RELEASE }} - ROOT ${{ matrix.config.ROOT }} - Codegen ${{ matrix.codegen }}
+    name:  ${{ matrix.config.CMSSW_VERSION || matrix.config.LCG_RELEASE }} - ROOT ${{ matrix.config.ROOT }}
     env:
       CMSSW_VERSION: ${{ matrix.config.CMSSW_VERSION }}
       IMAGE: ${{ matrix.config.IMAGE }}
       LCG_RELEASE: ${{ matrix.config.LCG_RELEASE }}
       LCG_ARCH: ${{ matrix.config.LCG_ARCH }}
-      CODEGEN_FLAG: ${{ matrix.codegen && '--nllbackend codegen' || '' }}
+      SUPPORTS_CODEGEN: ${{ matrix.config.SUPPORTS_CODEGEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -120,103 +114,147 @@ jobs:
         name: Counting datacard
         with:
           script: |
-            mkdir -p outputs/counting
+            mkdir -p outputs/counting outputs/counting_codegen
             text2workspace.py  data/tutorials/multiDim/toy-hgg-125.txt -m 125 -P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH
-            combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1 ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1
             mv higgsCombine*.root outputs/counting/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1 --nllbackend codegen
+              mv higgsCombine*.root outputs/counting_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard Fixed Point from csv
         with:
           script: |
-            mkdir -p outputs/counting_fixed
+            mkdir -p outputs/counting_fixed outputs/counting_fixed_codegen
             text2workspace.py  data/tutorials/multiDim/toy-hgg-125.txt -m 125 -P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH
-            combineTool.py -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root --fromfile data/tutorials/multiDim/fixed.csv ${{ env.CODEGEN_FLAG }}
+            combineTool.py -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root --fromfile data/tutorials/multiDim/fixed.csv
             mv higgsCombine*.root outputs/counting_fixed/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combineTool.py -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root --fromfile data/tutorials/multiDim/fixed.csv --nllbackend codegen
+              mv higgsCombine*.root outputs/counting_fixed_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Parametric analysis
         with:
           script: |
-            mkdir -p outputs/parametric-analysis
+            mkdir -p outputs/parametric-analysis outputs/parametric-analysis_codegen
             text2workspace.py data/tutorials/CAT23001/datacard-3-parametric-analysis.txt -o ws_parametric-analysis.root --mass 125
-            combine -M MultiDimFit ws_parametric-analysis.root  --algo singles --setParameterRanges r=-2,1 ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit ws_parametric-analysis.root  --algo singles --setParameterRanges r=-2,1
             mv higgsCombine*.root outputs/parametric-analysis/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit ws_parametric-analysis.root  --algo singles --setParameterRanges r=-2,1 --nllbackend codegen
+              mv higgsCombine*.root outputs/parametric-analysis_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis
         with:
           script: |
-            mkdir -p outputs/template-analysis
+            mkdir -p outputs/template-analysis outputs/template-analysis_codegen
             text2workspace.py data/ci/template-analysis_shapeInterp.txt -o ws_template-analysis.root --mass 200
-            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1v ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1v
             combine -M FitDiagnostics ws_template-analysis.root  -t -1 --setParameters r=1 --plots  --setParameterRanges r=-1,1
             mv higgsCombine*.root outputs/template-analysis/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1v --nllbackend codegen
+              mv higgsCombine*.root outputs/template-analysis_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistSum
         with:
           script: |
-            mkdir -p outputs/template-analysis_CMSHistSum
+            mkdir -p outputs/template-analysis_CMSHistSum outputs/template-analysis_CMSHistSum_codegen
             text2workspace.py data/ci/template-analysis_shapeInterp.txt -o ws_template-analysis.root --mass 200 --for-fits --no-wrappers --use-histsum
-            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH
             mv higgsCombine*.root outputs/template-analysis_CMSHistSum/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH --nllbackend codegen
+              mv higgsCombine*.root outputs/template-analysis_CMSHistSum_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistSum with shapeN
         with:
           script: |
-            mkdir -p outputs/template-analysis_CMSHistSum_shapeN
+            mkdir -p outputs/template-analysis_CMSHistSum_shapeN outputs/template-analysis_CMSHistSum_shapeN_codegen
             text2workspace.py data/ci/template-analysis_shapeNInterp.txt -o ws_template-analysis.root --mass 200 --for-fits --no-wrappers --use-histsum
-            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH
             mv higgsCombine*.root outputs/template-analysis_CMSHistSum_shapeN/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH --nllbackend codegen
+              mv higgsCombine*.root outputs/template-analysis_CMSHistSum_shapeN_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: RooMultiPdf
         if: ${{ !matrix.config.CMSSW_VERSION || startsWith(matrix.config.CMSSW_VERSION, 'CMSSW_14') }}
         with:
           script: |
-            mkdir -p outputs/RooMultiPdf
+            mkdir -p outputs/RooMultiPdf outputs/RooMultiPdf_codegen
             text2workspace.py data/ci/datacard_RooMultiPdf.txt.gz  -o ws_RooMultiPdf.root
-            combine -M MultiDimFit -m 125.38  --setParameters pdf_index_ggh=2 --freezeParameters MH --cminDefaultMinimizerStrategy 0 --X-rtd FAST_VERTICAL_MORPH --X-rtd MINIMIZER_freezeDisassociatedParams --X-rtd MINIMIZER_multiMin_maskChannels=2 --algo singles ws_RooMultiPdf.root ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit -m 125.38  --setParameters pdf_index_ggh=2 --freezeParameters MH --cminDefaultMinimizerStrategy 0 --X-rtd FAST_VERTICAL_MORPH --X-rtd MINIMIZER_freezeDisassociatedParams --X-rtd MINIMIZER_multiMin_maskChannels=2 --algo singles ws_RooMultiPdf.root
             mv higgsCombine*.root outputs/RooMultiPdf/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit -m 125.38  --setParameters pdf_index_ggh=2 --freezeParameters MH --cminDefaultMinimizerStrategy 0 --X-rtd FAST_VERTICAL_MORPH --X-rtd MINIMIZER_freezeDisassociatedParams --X-rtd MINIMIZER_multiMin_maskChannels=2 --algo singles ws_RooMultiPdf.root --nllbackend codegen
+              mv higgsCombine*.root outputs/RooMultiPdf_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: RooParametricHist
         with:
           script: |
-            mkdir -p outputs/RooParametricHist
+            mkdir -p outputs/RooParametricHist outputs/RooParametricHist_codegen
             text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*/zcc:z[1,-5,5]' data/ci/datacard_RooParametricHist.txt -o ws_RooParametricHist.root
-            combine -M MultiDimFit ws_RooParametricHist.root --algo singles ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit ws_RooParametricHist.root --algo singles
             mv higgsCombine*.root outputs/RooParametricHist/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit ws_RooParametricHist.root --algo singles --nllbackend codegen
+              mv higgsCombine*.root outputs/RooParametricHist_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: RooHistPdf
         if: ${{ !matrix.config.CMSSW_VERSION || startsWith(matrix.config.CMSSW_VERSION, 'CMSSW_14') }}
         with:
           script: |
-            mkdir -p outputs/RooHistPdf
+            mkdir -p outputs/RooHistPdf outputs/RooHistPdf_codegen
             text2workspace.py data/ci/datacard_RooHistPdf.txt.gz -o ws_RooHistPdf.root
-            combine -M MultiDimFit ws_RooHistPdf.root --algo singles -v -2  --setParameterRanges r=-1,2. ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit ws_RooHistPdf.root --algo singles -v -2  --setParameterRanges r=-1,2.
             mv higgsCombine*.root outputs/RooHistPdf/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit ws_RooHistPdf.root --algo singles -v -2  --setParameterRanges r=-1,2. --nllbackend codegen
+              mv higgsCombine*.root outputs/RooHistPdf_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis with large integrals
         with:
           script: |
-            mkdir -p outputs/template-analysis_largeYields
+            mkdir -p outputs/template-analysis_largeYields outputs/template-analysis_largeYields_codegen
             text2workspace.py data/ci/templ_datacard_largeYields.txt -o ws_template-analysis.root
-            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1
             mv higgsCombine*.root outputs/template-analysis_largeYields/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --nllbackend codegen
+              mv higgsCombine*.root outputs/template-analysis_largeYields_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis with large integrals using CMSHistSum
         with:
           script: |
-            mkdir -p outputs/template-analysis_largeYields_CMSHistSum
+            mkdir -p outputs/template-analysis_largeYields_CMSHistSum outputs/template-analysis_largeYields_CMSHistSum_codegen
             text2workspace.py data/ci/templ_datacard_largeYields.txt -o ws_template-analysis.root  --for-fits --no-wrappers --use-histsum
-            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH ${{ env.CODEGEN_FLAG }}
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH
             mv higgsCombine*.root outputs/template-analysis_largeYields_CMSHistSum/
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then
+              combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH --nllbackend codegen
+              mv higgsCombine*.root outputs/template-analysis_largeYields_CMSHistSum_codegen/
+            fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: InterferenceModel test in CMSSW
@@ -230,7 +268,7 @@ jobs:
         run: |
           SAFE_NAME=$(echo "${{ matrix.config.CMSSW_VERSION || matrix.config.LCG_RELEASE }}" | tr '/' '_')
           SAFE_ROOT=$(echo "${{ matrix.config.ROOT }}" | tr ' /' '_')
-          echo "name=outputs-${SAFE_NAME}-ROOT${SAFE_ROOT}-Codegen${{ matrix.codegen }}" >> "$GITHUB_OUTPUT"
+          echo "name=outputs-${SAFE_NAME}-ROOT${SAFE_ROOT}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         if: always()
