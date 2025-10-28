@@ -110,6 +110,9 @@ jobs:
       #       root --version
       #       combine --help
 
+      - name: Create outputs directory
+        run: mkdir -p outputs
+
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard
         with:
