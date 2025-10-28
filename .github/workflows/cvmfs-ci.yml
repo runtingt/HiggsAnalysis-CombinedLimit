@@ -225,10 +225,17 @@ jobs:
             cd test
             python3 test_interference.py
 
+      - name: Prepare artifact name
+        id: artifact_name
+        run: |
+          SAFE_NAME=$(echo "${{ matrix.config.CMSSW_VERSION || matrix.config.LCG_RELEASE }}" | tr '/' '_')
+          SAFE_ROOT=$(echo "${{ matrix.config.ROOT }}" | tr ' /' '_')
+          echo "name=outputs-${SAFE_NAME}-ROOT${SAFE_ROOT}-Codegen${{ matrix.codegen }}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@v4
         if: always()
         name: Upload outputs
         with:
-          name: outputs-${{ matrix.config.CMSSW_VERSION || matrix.config.LCG_RELEASE }}-ROOT${{ matrix.config.ROOT }}-Codegen${{ matrix.codegen }}
+          name: ${{ steps.artifact_name.outputs.name }}
           path: outputs/
           retention-days: 7
