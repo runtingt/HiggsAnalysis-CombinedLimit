@@ -114,7 +114,7 @@ jobs:
             ${{ env.NEW_FEATURE_CMD }}
 
       - uses: ./.github/actions/run-in-cvmfs
-        name: Countind datacard Fixed Point from csv
+        name: Counting datacard Fixed Point from csv
         with:
           script: |
             text2workspace.py  data/tutorials/multiDim/toy-hgg-125.txt -m 125 -P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH
