@@ -32,6 +32,11 @@ runs:
           cd HiggsAnalysis/CombinedLimit;
           ${{ inputs.script }}
 
+    - name: Clean CMSSW directory
+      if: ${{ env.IMAGE != '' }}
+      shell: bash
+      run: |
+        rm -rf /home/cmsusr/${CMSSW_VERSION}
 
     # Case 2: Run directly on the GitHub runner if no image is provided and assume LCG
     - name: Run command on host
