@@ -23,37 +23,32 @@ jobs:
             CMSSW_VERSION: "CMSSW_14_1_0_pre4"
             SCRAM_ARCH: "el9_amd64_gcc12"
             ROOT: "6.30.07"
-            SUPPORTS_CODEGEN: false
           - IMAGE: "cmscloud/cc7-cms"
             CMSSW_VERSION: "CMSSW_11_3_4"
             SCRAM_ARCH: "slc7_amd64_gcc900"
             ROOT: "6.22.09"
-            SUPPORTS_CODEGEN: false
           - IMAGE: "cmscloud/al9-cms"
             CMSSW_VERSION: "CMSSW_14_0_0_pre1"
             SCRAM_ARCH: "el9_amd64_gcc12"
             ROOT: "6.26.11"
-            SUPPORTS_CODEGEN: false
-          - IMAGE: "cmscloud/al8-cms"
-            CMSSW_VERSION: "CMSSW_14_2_0_pre2_ROOT632"
-            SCRAM_ARCH: "el8_amd64_gcc12"
-            ROOT: "6.32.06"
-            SUPPORTS_CODEGEN: false
+          - LCG_RELEASE: "LCG_102"
+            LCG_ARCH: "x86_64-ubuntu2204-gcc11-opt"
+            ROOT: "6.26.04"
+          - LCG_RELEASE: "LCG_106"
+            LCG_ARCH: "x86_64-ubuntu2204-gcc11-opt"
+            ROOT: "6.32.02"
           - LCG_RELEASE: "LCG_108"
             LCG_ARCH: "x86_64-ubuntu2204-gcc11-opt"
             ROOT: "6.36.02"
-            SUPPORTS_CODEGEN: true
           - LCG_RELEASE: "dev3/latest"
             LCG_ARCH: "x86_64-ubuntu2204-gcc11-opt"
             ROOT: "LCG master"
-            SUPPORTS_CODEGEN: true
-    name: ${{ matrix.CMSSW_VERSION || matrix.LCG_RELEASE }} - ROOT ${{ matrix.ROOT }}
+    name: ${{ matrix.CMSSW_VERSION }}${{ matrix.LCG_RELEASE }} - ROOT ${{ matrix.ROOT }}
     env:
       CMSSW_VERSION: ${{ matrix.CMSSW_VERSION }}
       IMAGE: ${{ matrix.IMAGE }}
       LCG_RELEASE: ${{ matrix.LCG_RELEASE }}
       LCG_ARCH: ${{ matrix.LCG_ARCH }}
-      SUPPORTS_CODEGEN: ${{ matrix.SUPPORTS_CODEGEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -117,164 +112,100 @@ jobs:
           cd build;
           ctest --output-on-failure -j$(nproc) .;
 
-      - name: Get output directory
-        id: get_output_dir
-        run: |
-          if [ "${{ env.CMSSW_VERSION }}" == "" ]; then
-            echo "OUTPUT_DIR=${{ github.workspace }}/outputs" >> "$GITHUB_OUTPUT"
-          else
-            echo "OUTPUT_DIR=/workspace/outputs" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard
+        # Only run this test in CMSSW mode, because otherwise we already run this in the unit tests
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/counting $OUTDIR/counting_codegen
+          script: |
             text2workspace.py  data/tutorials/multiDim/toy-hgg-125.txt -m 125 -P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/counting
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/counting_codegen/; fi
+            combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1
 
       - uses: ./.github/actions/run-in-cvmfs
-        name: Counting datacard Fixed Point from csv
+        name: Countind datacard Fixed Point from csv
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
-          script: |-
-            COMBINE_COMMAND="combineTool.py -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root --fromfile data/tutorials/multiDim/fixed.csv"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/counting_fixed_csv $OUTDIR/counting_fixed_csv_codegen
+          script: |
             text2workspace.py  data/tutorials/multiDim/toy-hgg-125.txt -m 125 -P HiggsAnalysis.CombinedLimit.PhysicsModel:floatingXSHiggs --PO modes=ggH,qqH
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/counting_fixed_csv
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/counting_fixed_csv_codegen/; fi
+            combineTool.py -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root --fromfile data/tutorials/multiDim/fixed.csv
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Parametric analysis
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit ws_parametric-analysis.root  --algo singles --setParameterRanges r=-2,1"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/parametric $OUTDIR/parametric_codegen
+          script: |
             text2workspace.py data/tutorials/CAT23001/datacard-3-parametric-analysis.txt -o ws_parametric-analysis.root --mass 125
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/parametric
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/parametric_codegen/; fi
+            combine -M MultiDimFit ws_parametric-analysis.root  --algo singles --setParameterRanges r=-2,1
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistFunc 
         with:
-          script: |-
-            COMBINE_COMMAND_1="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1"
-            COMBINE_COMMAND_2="combine -M FitDiagnostics ws_template-analysis.root  -t -1 --setParameters r=1 --plots  --setParameterRanges r=-1,1"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/template $OUTDIR/template_codegen
+          script: |
             text2workspace.py data/ci/template-analysis_shapeInterp.txt -o ws_template-analysis.root --mass 200
-            $COMBINE_COMMAND_1
-            $COMBINE_COMMAND_2
-            mv higgsCombine*.root fitDiagnostics*.root $OUTDIR/template
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND_1 --nllbackend codegen; $COMBINE_COMMAND_2 --nllbackend codegen; mv higgsCombine*.root fitDiagnostics*.root $OUTDIR/template_codegen/; fi
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1
+            combine -M FitDiagnostics ws_template-analysis.root  -t -1 --setParameters r=1 --plots  --setParameterRanges r=-1,1
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistFunc shapeN
         with:
-          script: |-
-            COMBINE_COMMAND_1="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1"
-            COMBINE_COMMAND_2="combine -M FitDiagnostics ws_template-analysis.root  -t -1 --setParameters r=1 --plots  --setParameterRanges r=-1,1"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/template_shapeN $OUTDIR/template_shapeN_codegen
+          script: |
             text2workspace.py data/ci/template-analysis_shapeNInterp.txt -o ws_template-analysis.root --mass 200
-            $COMBINE_COMMAND_1
-            $COMBINE_COMMAND_2
-            mv higgsCombine*.root fitDiagnostics*.root $OUTDIR/template_shapeN
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND_1 --nllbackend codegen; $COMBINE_COMMAND_2 --nllbackend codegen; mv higgsCombine*.root fitDiagnostics*.root $OUTDIR/template_shapeN_codegen/; fi
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1
+            combine -M FitDiagnostics ws_template-analysis.root  -t -1 --setParameters r=1 --plots  --setParameterRanges r=-1,1
+
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistSum
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/template_histsum $OUTDIR/template_histsum_codegen
+          script: |
             text2workspace.py data/ci/template-analysis_shapeInterp.txt -o ws_template-analysis.root --mass 200 --for-fits --no-wrappers --use-histsum
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/template_histsum
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/template_histsum_codegen/; fi
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistSum with shapeN
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/template_histsum_shapeN $OUTDIR/template_histsum_shapeN_codegen
+          script: |
             text2workspace.py data/ci/template-analysis_shapeNInterp.txt -o ws_template-analysis.root --mass 200 --for-fits --no-wrappers --use-histsum
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/template_histsum_shapeN
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/template_histsum_shapeN_codegen/; fi
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH
 
       - uses: ./.github/actions/run-in-cvmfs
         name: RooMultiPdf
         if: ${{ !matrix.CMSSW_VERSION || startsWith(matrix.CMSSW_VERSION, 'CMSSW_14') }}
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit -m 125.38  --setParameters pdf_index_ggh=2 --freezeParameters MH --cminDefaultMinimizerStrategy 0 --X-rtd FAST_VERTICAL_MORPH --X-rtd MINIMIZER_freezeDisassociatedParams --X-rtd MINIMIZER_multiMin_maskChannels=2 --algo singles ws_RooMultiPdf.root"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/roo_multipdf $OUTDIR/roo_multipdf_codegen
+          script: |
             text2workspace.py data/ci/datacard_RooMultiPdf.txt.gz  -o ws_RooMultiPdf.root
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/roo_multipdf
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/roo_multipdf_codegen/; fi
+            combine -M MultiDimFit -m 125.38  --setParameters pdf_index_ggh=2 --freezeParameters MH --cminDefaultMinimizerStrategy 0 --X-rtd FAST_VERTICAL_MORPH --X-rtd MINIMIZER_freezeDisassociatedParams --X-rtd MINIMIZER_multiMin_maskChannels=2 --algo singles ws_RooMultiPdf.root
 
       - uses: ./.github/actions/run-in-cvmfs
         name: RooParametricHist
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit ws_RooParametricHist.root --algo singles"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/roo_parametric_hist $OUTDIR/roo_parametric_hist_codegen
+          script: |
             text2workspace.py -P HiggsAnalysis.CombinedLimit.PhysicsModel:multiSignalModel  --PO verbose --PO 'map=.*/*hcc*:r[1,-500,500]' --PO 'map=.*/zcc:z[1,-5,5]' data/ci/datacard_RooParametricHist.txt -o ws_RooParametricHist.root
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/roo_parametric_hist
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/roo_parametric_hist_codegen/; fi
+            combine -M MultiDimFit ws_RooParametricHist.root --algo singles
 
       - uses: ./.github/actions/run-in-cvmfs
         name: RooHistPdf
         if: ${{ !matrix.CMSSW_VERSION || startsWith(matrix.CMSSW_VERSION, 'CMSSW_14') }}
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit ws_RooHistPdf.root --algo singles -v -2  --setParameterRanges r=-1,2."
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/roo_hist_pdf $OUTDIR/roo_hist_pdf_codegen
+          script: |
             text2workspace.py data/ci/datacard_RooHistPdf.txt.gz -o ws_RooHistPdf.root
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/roo_hist_pdf
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/roo_hist_pdf_codegen/; fi
+            combine -M MultiDimFit ws_RooHistPdf.root --algo singles -v -2  --setParameterRanges r=-1,2.
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis with large integrals
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/template_large_integrals $OUTDIR/template_large_integrals_codegen
+          script: |
             text2workspace.py data/ci/templ_datacard_largeYields.txt -o ws_template-analysis.root
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/template_large_integrals
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/template_large_integrals_codegen/; fi
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis with large integrals using CMSHistSum
         with:
-          script: |-
-            COMBINE_COMMAND="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH"
-            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
-            mkdir -p $OUTDIR/template_large_integrals_histsum $OUTDIR/template_large_integrals_histsum_codegen
+          script: |
             text2workspace.py data/ci/templ_datacard_largeYields.txt -o ws_template-analysis.root  --for-fits --no-wrappers --use-histsum
-            $COMBINE_COMMAND
-            mv higgsCombine*.root $OUTDIR/template_large_integrals_histsum
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/template_large_integrals_histsum_codegen/; fi
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH
 
       - uses: ./.github/actions/run-in-cvmfs
         name: InterferenceModel test in CMSSW
@@ -282,25 +213,3 @@ jobs:
           script: |
             cd test
             python3 test_interference.py
-
-      - name: Prepare artifact name
-        id: artifact_name
-        run: |
-          SAFE_NAME=$(echo "${{ matrix.CMSSW_VERSION || matrix.LCG_RELEASE }}" | tr '/' '_')
-          SAFE_ROOT=$(echo "${{ matrix.ROOT }}" | tr ' /' '_')
-          echo "name=outputs-${SAFE_NAME}-ROOT${SAFE_ROOT}" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        name: Upload outputs
-        with:
-          name: ${{ steps.artifact_name.outputs.name }}
-          path: outputs/
-          retention-days: 7
-
-      - uses: ./.github/actions/run-in-cvmfs
-        name: Compare outputs
-        with:
-          script: |
-            COMPARISON_SCRIPT="python3 test/compare_codegen.py outputs"
-            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMPARISON_SCRIPT; else echo "Codegen not supported, skipping"; fi
