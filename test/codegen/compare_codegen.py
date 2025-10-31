@@ -3,6 +3,7 @@ import os
 import ROOT
 from enum import Enum, auto
 
+
 class ComparisonResult(Enum):
     OK = 0
     NO_LIMIT_TREE = auto()
@@ -16,7 +17,7 @@ def detect_keys(startpath) -> set:
     dirs = os.listdir(startpath)
     for d in dirs:
         if os.path.isdir(os.path.join(startpath, d)):
-            keys.add(d.replace('_codegen', ''))
+            keys.add(d.replace("_codegen", ""))
     return sorted(keys, key=lambda k: os.path.getmtime(os.path.join(startpath, k)))
 
 
@@ -41,10 +42,7 @@ def check_codegen_counterpart_files(startpath, keys, missing_codegen) -> dict[st
         # Union should equal both sets
         missing_in_codegen = nominal_files - codegen_files
         missing_in_nominal = codegen_files - nominal_files
-        discrepancies[key] = {
-            "missing_in_codegen": missing_in_codegen,
-            "missing_in_nominal": missing_in_nominal 
-        }
+        discrepancies[key] = {"missing_in_codegen": missing_in_codegen, "missing_in_nominal": missing_in_nominal}
     return discrepancies
 
 
@@ -55,19 +53,19 @@ def compare_file_contents(file1, file2, tol: float = 1e-3) -> ComparisonResult:
     # For now, just check the 'limit' tree
     keys1 = [k.GetName() for k in f1.GetListOfKeys()]
     keys2 = [k.GetName() for k in f2.GetListOfKeys()]
-    if 'limit' not in keys1 or 'limit' not in keys2:
-        if 'fitDiagnosticsTest' in file1:
+    if "limit" not in keys1 or "limit" not in keys2:
+        if "fitDiagnosticsTest" in file1:
             return ComparisonResult.OK  # Skip fitDiagnosticsTest for now
         return ComparisonResult.NO_LIMIT_TREE
 
-    tree1 = f1.Get('limit')
-    tree2 = f2.Get('limit')
+    tree1 = f1.Get("limit")
+    tree2 = f2.Get("limit")
     if tree1.GetEntries() != tree2.GetEntries():
         return ComparisonResult.DIFFERENT_ENTRIES
 
     # Check POIs match
-    pois_1 = [b.GetName() for b in tree1.GetListOfBranches() if 'r_' in b.GetName() or 'r' == b.GetName()]
-    pois_2 = [b.GetName() for b in tree2.GetListOfBranches() if 'r_' in b.GetName() or 'r' == b.GetName()]
+    pois_1 = [b.GetName() for b in tree1.GetListOfBranches() if "r_" in b.GetName() or "r" == b.GetName()]
+    pois_2 = [b.GetName() for b in tree2.GetListOfBranches() if "r_" in b.GetName() or "r" == b.GetName()]
     if set(pois_1) != set(pois_2):
         return ComparisonResult.DIFFERENT_POIS
 
@@ -78,8 +76,8 @@ def compare_file_contents(file1, file2, tol: float = 1e-3) -> ComparisonResult:
         for poi in pois_1:
             val1 = getattr(tree1, poi)
             val2 = getattr(tree2, poi)
-            deltaNLL1 = getattr(tree1, 'deltaNLL')
-            deltaNLL2 = getattr(tree2, 'deltaNLL')
+            deltaNLL1 = getattr(tree1, "deltaNLL")
+            deltaNLL2 = getattr(tree2, "deltaNLL")
             if abs(val1 - val2) > tol or abs(deltaNLL1 - deltaNLL2) > tol:
                 return ComparisonResult.VALUE_MISMATCH
 
@@ -92,26 +90,24 @@ if __name__ == "__main__":
         sys.exit(1)
     comparison_input_dir = sys.argv[1]
     keys = detect_keys(comparison_input_dir)
-    status = {k: 'OK' for k in keys}
+    status = {k: "OK" for k in keys}
 
     # ---- Comparisons ---
 
     # 1. Check every directory has a codegen counterpart
     missing_codegen = check_codegen_counterparts(comparison_input_dir, keys)
     for key in missing_codegen:
-        status[key] = 'MISSING_CODEGEN'
+        status[key] = "MISSING_CODEGEN"
 
     # 2. Check every codegen directory has the same files as its counterpart
     discrepancies = check_codegen_counterpart_files(comparison_input_dir, keys, missing_codegen)
     for key, diff in discrepancies.items():
         if diff["missing_in_codegen"] or diff["missing_in_nominal"]:
-                status[key] = 'FILE_MISMATCH'
+            status[key] = "FILE_MISMATCH"
 
     # 3. Check file contents
     for key in keys:
-        if key in missing_codegen or \
-           key in discrepancies and (discrepancies[key]["missing_in_codegen"] \
-                                     or discrepancies[key]["missing_in_nominal"]):
+        if key in missing_codegen or key in discrepancies and (discrepancies[key]["missing_in_codegen"] or discrepancies[key]["missing_in_nominal"]):
             continue
 
         files = os.listdir(os.path.join(comparison_input_dir, key))
