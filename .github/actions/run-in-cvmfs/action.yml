@@ -15,16 +15,6 @@ runs:
       run: |
         df -h
 
-    - name: Inspect disk usage (top 20 largest dirs)
-      if: ${{ env.IMAGE != '' }}
-      shell: bash
-      run: |
-        echo "=== Disk usage summary ($(date)) ==="
-        ls -lh /
-        echo "--- /var ---"
-        sudo du -h -d3 /var 2>/dev/null | sort -hr 2>/dev/null | head -n 20 || echo "Could not retrieve full disk usage"
-        echo "===================================="
-
     - name: Setup output directory
       if: ${{ env.IMAGE != '' }}
       shell: bash
@@ -47,12 +37,6 @@ runs:
           ulimit -s unlimited;
           cd HiggsAnalysis/CombinedLimit;
           ${{ inputs.script }}
-
-    - name: Clean CMSSW directory
-      if: ${{ env.IMAGE != '' }}
-      shell: bash
-      run: |
-        rm -rf /home/cmsusr/${CMSSW_VERSION}
 
     # Case 2: Run directly on the GitHub runner if no image is provided and assume LCG
     - name: Run command on host
