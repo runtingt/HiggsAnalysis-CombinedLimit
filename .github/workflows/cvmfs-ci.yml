@@ -128,8 +128,6 @@ jobs:
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard
-        # Only run this test in CMSSW mode, because otherwise we already run this in the unit tests
-        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1"
@@ -142,7 +140,6 @@ jobs:
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard Fixed Point from csv
-        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combineTool.py -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root --fromfile data/tutorials/multiDim/fixed.csv"
@@ -155,7 +152,6 @@ jobs:
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Parametric analysis
-        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit ws_parametric-analysis.root  --algo singles --setParameterRanges r=-2,1"
@@ -183,14 +179,19 @@ jobs:
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistFunc shapeN
         with:
-          script: |
+          script: |-
+            COMBINE_COMMAND_1="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1"
+            COMBINE_COMMAND_2="combine -M FitDiagnostics ws_template-analysis.root  -t -1 --setParameters r=1 --plots  --setParameterRanges r=-1,1"
+            OUTDIR=${{ steps.get_output_dir.outputs.OUTPUT_DIR }}
+            mkdir -p $OUTDIR/template_shapeN $OUTDIR/template_shapeN_codegen
             text2workspace.py data/ci/template-analysis_shapeNInterp.txt -o ws_template-analysis.root --mass 200
-            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1
-            combine -M FitDiagnostics ws_template-analysis.root  -t -1 --setParameters r=1 --plots  --setParameterRanges r=-1,1
+            $COMBINE_COMMAND_1
+            $COMBINE_COMMAND_2
+            mv higgsCombine*.root fitDiagnostics*.root $OUTDIR/template_shapeN
+            if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND_1 --nllbackend codegen; $COMBINE_COMMAND_2 --nllbackend codegen; mv higgsCombine*.root fitDiagnostics*.root $OUTDIR/template_shapeN_codegen/; fi
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistSum
-        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH"
@@ -203,7 +204,6 @@ jobs:
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistSum with shapeN
-        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH"
