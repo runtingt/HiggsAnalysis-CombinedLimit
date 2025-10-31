@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import absolute_import, print_function
 
 import json
 import os
@@ -11,9 +10,6 @@ from optparse import OptionParser
 from pprint import pprint
 from sys import argv, exit, stderr, stdout
 from types import *
-
-import six
-from six.moves import zip
 
 # search for the nuisances that have identical correlation matrix:
 # given two log-normal systematics X, Y for which affect exactly the same
@@ -43,12 +39,11 @@ def asymDivide(something):
     if len(something) != 2:
         raise TypeError("asymDivision requires a pair.")
 
-    (a, b) = something
-    theType = (type(a), type(b))
+    a, b = something
 
-    if theType == (FloatType, ListType) or theType == (ListType, FloatType):
+    if (isinstance(a, FloatType) and isinstance(b, ListType)) or (isinstance(a, ListType) and isinstance(b, FloatType)):
         return asymDivideMixed(something)
-    elif theType == (ListType, ListType):
+    elif isinstance(a, ListType) and isinstance(b, ListType):
         if len(a) != len(b):
             raise TypeError("For pairs of lists, they must have the same length.")
         return asymDivideLists(something)
@@ -86,7 +81,7 @@ def asymDivideMixed(elementAndList):
     (x, yz) = elementAndList
     orderKept = True
 
-    if type(x) == ListType:
+    if isinstance(x, ListType):
         (x, yz) = (yz, x)
         orderKept = False
 
@@ -163,7 +158,7 @@ def lnN_redundancies(allSysts):
 
     #    pprint(kappaRatios)
 
-    pprint([x for x in six.iteritems(kappaRatios) if x[0] in correlatedPairs])
+    pprint([x for x in kappaRatios.items() if x[0] in correlatedPairs])
 
 
 if __name__ == "__main__":

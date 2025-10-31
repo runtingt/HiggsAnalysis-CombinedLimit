@@ -1,10 +1,7 @@
 # import ROOT with a fix to get batch mode (http://root.cern.ch/phpBB3/viewtopic.php?t=3198)
-from __future__ import absolute_import, print_function
 
 from optparse import OptionParser
 from sys import argv
-
-from six.moves import range
 
 import ROOT
 
@@ -117,7 +114,7 @@ for fname in args:
         iToyInFile += 1
         iToy += 1
         dataset = infile.Get("toys/toy_%d" % iToyInFile)
-        if dataset == None:
+        if dataset is None:
             break
         print("Processing dataset ", iToy, " (", iToyInFile, " in file ", fname, ")")
         if iToy < options.first:
@@ -146,7 +143,7 @@ for fname in args:
             obs = obsout
         else:
             cat = dataset.get().find(options.cat)
-            if cat == None:
+            if cat is None:
                 raise RuntimeError("Cannot find category %s in dataset." % options.cat)
             obs.remove(cat)
             if options.verbose > 1:

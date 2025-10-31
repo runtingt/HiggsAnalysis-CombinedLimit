@@ -14,7 +14,7 @@ on:
       - main
 jobs:
   test_workflow:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -40,11 +40,11 @@ jobs:
             ROOT: "6.32.06"
             SUPPORTS_CODEGEN: false
           - LCG_RELEASE: "LCG_108"
-            LCG_ARCH: "x86_64-ubuntu2404-gcc13-opt"
+            LCG_ARCH: "x86_64-ubuntu2204-gcc11-opt"
             ROOT: "6.36.02"
             SUPPORTS_CODEGEN: true
           - LCG_RELEASE: "dev3/latest"
-            LCG_ARCH: "x86_64-ubuntu2404-gcc13-opt"
+            LCG_ARCH: "x86_64-ubuntu2204-gcc11-opt"
             ROOT: "LCG master"
             SUPPORTS_CODEGEN: true
     name: ${{ matrix.CMSSW_VERSION || matrix.LCG_RELEASE }} - ROOT ${{ matrix.ROOT }}
@@ -66,25 +66,22 @@ jobs:
         env:
           LCG_RELEASE: ${{ matrix.LCG_RELEASE }}
           LCG_ARCH: ${{ matrix.LCG_ARCH }}
+          # VDT doesn't seem to be available in LCG_102.
+          # But also it's very good to also test builds with USE_VDT=OFF.
+          USE_VDT: ${{ matrix.LCG_RELEASE != 'LCG_102' && 'TRUE' || 'FALSE' }}
         run: >-
           source /cvmfs/sft.cern.ch/lcg/views/${LCG_RELEASE}/${LCG_ARCH}/setup.sh;
           root --version;
-          mkdir -p .python/HiggsAnalysis;
-          ln -s $PWD/python $PWD/.python/HiggsAnalysis/CombinedLimit;
-          touch $PWD/.python/HiggsAnalysis/__init__.py;
-          touch $PWD/.python/HiggsAnalysis/CombinedLimit/__init__.py;
-          python3 -m venv virtualenv;
-          source virtualenv/bin/activate;
-          python3 -m pip install -e .;
           mkdir build;
           cd build;
-          cmake -DCMAKE_CXX_COMPILER=$COMPILER_PATH/bin/g++ \
-                -DCMAKE_C_COMPILER=$COMPILER_PATH/bin/gcc \
-                -DCMAKE_INSTALL_PREFIX=../install \
+          cmake -DCMAKE_INSTALL_PREFIX=../install \
                 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-                -DINSTALL_PYTHON=FALSE \
+                -DUSE_VDT=${USE_VDT} \
+                -DBUILD_TESTS=TRUE \
                 ..;
           make install -j$(nproc);
+          echo "RooFit.Banner: 0" > .rootrc;
+          echo "RooFit.Banner: 0" > test/.rootrc;
           cd ..;
           export PATH=$PWD/install/bin:$PATH;
           export LD_LIBRARY_PATH=$PWD/install/lib:$LD_LIBRARY_PATH;
@@ -105,10 +102,20 @@ jobs:
             cmsenv
             mkdir -p HiggsAnalysis
             cp -r /work/CombinedLimit HiggsAnalysis/
-            scramv1 b -j$(nproc)
+            scramv1 b -j$(nproc --ignore=2)
             echo ${PATH}
             root --version
             combine --help
+
+      - name: Run Tests
+        if: ${{ env.CMSSW_VERSION == '' }}
+        env:
+          LCG_RELEASE: ${{ matrix.LCG_RELEASE }}
+          LCG_ARCH: ${{ matrix.LCG_ARCH }}
+        run: >-
+          source /cvmfs/sft.cern.ch/lcg/views/${LCG_RELEASE}/${LCG_ARCH}/setup.sh;
+          cd build;
+          ctest --output-on-failure -j$(nproc) .;
 
       - name: Get output directory
         id: get_output_dir
@@ -121,6 +128,8 @@ jobs:
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Counting datacard
+        # Only run this test in CMSSW mode, because otherwise we already run this in the unit tests
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root  --setParameterRanges r=-1,1"
@@ -132,7 +141,8 @@ jobs:
             if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/counting_codegen/; fi
 
       - uses: ./.github/actions/run-in-cvmfs
-        name: Countind datacard Fixed Point from csv
+        name: Counting datacard Fixed Point from csv
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combineTool.py -M MultiDimFit data/tutorials/multiDim/toy-hgg-125.root --fromfile data/tutorials/multiDim/fixed.csv"
@@ -145,6 +155,7 @@ jobs:
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Parametric analysis
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit ws_parametric-analysis.root  --algo singles --setParameterRanges r=-2,1"
@@ -156,7 +167,7 @@ jobs:
             if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND --nllbackend codegen; mv higgsCombine*.root $OUTDIR/parametric_codegen/; fi
 
       - uses: ./.github/actions/run-in-cvmfs
-        name: Template analysis
+        name: Template analysis CMSHistFunc 
         with:
           script: |-
             COMBINE_COMMAND_1="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1"
@@ -170,7 +181,16 @@ jobs:
             if [ "${{ env.SUPPORTS_CODEGEN }}" = "true" ]; then $COMBINE_COMMAND_1 --nllbackend codegen; $COMBINE_COMMAND_2 --nllbackend codegen; mv higgsCombine*.root fitDiagnostics*.root $OUTDIR/template_codegen/; fi
 
       - uses: ./.github/actions/run-in-cvmfs
+        name: Template analysis CMSHistFunc shapeN
+        with:
+          script: |
+            text2workspace.py data/ci/template-analysis_shapeNInterp.txt -o ws_template-analysis.root --mass 200
+            combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1
+            combine -M FitDiagnostics ws_template-analysis.root  -t -1 --setParameters r=1 --plots  --setParameterRanges r=-1,1
+
+      - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistSum
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH"
@@ -183,6 +203,7 @@ jobs:
 
       - uses: ./.github/actions/run-in-cvmfs
         name: Template analysis CMSHistSum with shapeN
+        if: ${{ env.CMSSW_VERSION != '' }}
         with:
           script: |-
             COMBINE_COMMAND="combine -M MultiDimFit ws_template-analysis.root --algo singles  --setParameterRanges r=-1,1 --X-rtd FAST_VERTICAL_MORPH"

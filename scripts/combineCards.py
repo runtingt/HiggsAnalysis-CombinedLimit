@@ -5,8 +5,6 @@ import re
 from optparse import OptionParser
 from sys import argv, exit
 
-import six
-
 from HiggsAnalysis.CombinedLimit.DatacardParser import *
 
 parser = OptionParser(
@@ -228,7 +226,7 @@ for ich, fname in enumerate(args):
                             constraint_terms.append(line)
                     warnings.warn(warning_message, RuntimeWarning)
                     break
-                if type(errline[b][p]) == list:
+                if isinstance(errline[b][p], list):
                     r = "{}/{}".format(
                         FloatToString(errline[b][p][0]),
                         FloatToString(errline[b][p][1]),
@@ -326,7 +324,7 @@ for ich, fname in enumerate(args):
     # combine observations, but remove line if any of the datacards doesn't have it
     if len(DC.obs) == 0:
         obsline = None
-    elif obsline != None:
+    elif obsline is not None:
         for b in DC.bins:
             bout = label if singlebin else label + b
             b_in = label if singlebin else b

@@ -1,12 +1,7 @@
-from __future__ import absolute_import, print_function
-
-from __future__ import division
 import re
 from math import *
 from optparse import OptionParser
 from sys import argv
-
-from six.moves import range
 
 parser = OptionParser()
 parser.add_option("-s", "--stat", dest="stat", default=False, action="store_true")
@@ -117,7 +112,7 @@ if not options.stat:
             continue
         l = re.sub("--+", "0", l)
         m = re.match(r"(.*?)\s+(0\s+(\d+\.?\d*(E[+\-]\d+)?\s+)+)", l)
-        if m == None:
+        if m is None:
             raise ValueError("Missing line " + l)
         sysname = m.group(1)
         syseff = [float(x) for x in m.group(2).split()]
@@ -188,7 +183,7 @@ for mh, D in data.items():
     # open file
     filename = "%s-mH%s.txt" % (options.label, mh)
     fout = open(filename, "w")
-    if fout == None:
+    if fout is None:
         raise RuntimeError("Cannot open %s for writing" % filename)
     print(" - " + filename)
     nproc = len(data[mh]["exp"]) // data[mh]["nch"]

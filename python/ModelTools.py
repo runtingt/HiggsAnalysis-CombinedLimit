@@ -5,8 +5,6 @@ from functools import reduce
 from math import *
 from sys import exit, stderr, stdout
 
-import six
-
 import ROOT
 
 ROOFIT_EXPR = "expr"
@@ -43,7 +41,7 @@ class ModelBuilderBase:
         self.out = stdout
         self.discrete_param_set = []
         if options.bin:
-            if options.out == None:
+            if options.out is None:
                 options.out = re.sub(".txt$", "", options.fileName) + ".root"
             options.baseDir = os.path.dirname(options.fileName)
             ROOT.gSystem.Load("libHiggsAnalysisCombinedLimit")
@@ -59,7 +57,7 @@ class ModelBuilderBase:
                 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
             if "ROOFITSYS" in os.environ:
                 ROOT.gSystem.AddIncludePath(" -I%s/include " % os.environ["ROOFITSYS"])
-        elif options.out != None:
+        elif options.out is not None:
             # stderr.write("Will save workspace to HLF file %s" % options.out)
             self.out = open(options.out, "w")
         if not options.bin:
@@ -916,7 +914,7 @@ class ModelBuilder(ModelBuilderBase):
                 alogNorms = []  # (kappaLo, kappaHi, RooAbsReal) asymm lnN
                 if scale == 1:
                     pass
-                elif type(scale) == str:
+                elif isinstance(scale, str):
                     factors.append(scale)
                 else:
                     raise RuntimeError("Physics model returned something that is neither a name, nor 0, nor 1.")
@@ -949,7 +947,7 @@ class ModelBuilder(ModelBuilderBase):
                     if pdf == "lnN" and errline[b][p] == 1.0:
                         continue
                     if pdf == "lnN" or pdf == "lnU":
-                        if type(errline[b][p]) == list:
+                        if isinstance(errline[b][p], list):
                             elow, ehigh = errline[b][p]
                             alogNorms.append((elow, ehigh, n))
                         else:
@@ -968,7 +966,7 @@ class ModelBuilder(ModelBuilderBase):
                                 "Values of N = %d, alpha = %g don't match with expected rate %g for systematics %s "
                                 % (args[0], errline[b][p], self.DC.exp[b][p], n)
                             )
-                        if gamma != None:
+                        if gamma is not None:
                             raise RuntimeError("More than one gmN uncertainty for the same bin and process (second one is %s)" % n)
                         gamma = n
                         nominal = errline[b][p]
@@ -1033,9 +1031,9 @@ class ModelBuilder(ModelBuilderBase):
 
     def doModelConfigs(self):
         if not self.options.bin:
-            raise RuntimeException
-        if self.options.out == None:
-            raise RuntimeException
+            raise RuntimeError("Binary mode disabled")
+        if self.options.out is None:
+            raise RuntimeError("Missing output file path")
         for nuis, warn in self.DC.flatParamNuisances.items():
             if self.out.var(nuis):
                 self.out.var(nuis).setAttribute("flatParam")

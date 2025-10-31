@@ -1,5 +1,3 @@
-from __future__ import absolute_import, print_function
-
 import os
 import re
 import sys
@@ -8,8 +6,6 @@ import time
 # global options
 from optparse import OptionParser
 from subprocess import call
-
-from six.moves import range
 
 import ROOT
 

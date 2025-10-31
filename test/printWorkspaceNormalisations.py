@@ -1,15 +1,11 @@
 #!/usr/bin/env -S python3 -u
 
-from __future__ import absolute_import, print_function
-
 import datetime
 from collections import OrderedDict as od
 from optparse import OptionParser
 from sys import argv, exit, stderr, stdout
 import io
 import sys
-
-from six.moves import range
 
 import ROOT
 
@@ -187,8 +183,7 @@ if use_cms_histsum:
             prop = prop_it.Next()
             prop_name = prop.GetName()
             if chan == prop_name.split("_bin")[-1]:
-                types = [ROOT.CMSHistSum, ROOT.CMSHistErrorPropagator]
-                if type(prop) in types:
+                if isinstance(prop, (ROOT.CMSHistSum, ROOT.CMSHistErrorPropagator)):
                     chan_CMSHistSum_norms[chan] = dict(prop.getProcessNorms())
 
 

@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-from __future__ import absolute_import, print_function
 
 import os
 import re
 from math import *
 from optparse import OptionParser
 from sys import argv, exit, stderr, stdout
-
-from six.moves import range, zip
 
 import ROOT
 from HiggsAnalysis.CombinedLimit.DatacardParser import *

@@ -1,10 +1,5 @@
-from __future__ import absolute_import, print_function
-
 import logging
 import sys
-
-import six
-from six.moves import map, range, zip
 
 import xlrd
 
@@ -230,7 +225,7 @@ def main(o):
             logging.info("Skipping sheet [%s]: I do not have parsing rules for it.", s.name)
             continue
         logging.info("Processing sheet [" + s.name + "]")
-        for group, props in six.iteritems(spec["groups"]):
+        for group, props in spec["groups"].items():
             table = []
             logging.info("Processing [" + group + "] in [" + s.name + "]")
             # open output
