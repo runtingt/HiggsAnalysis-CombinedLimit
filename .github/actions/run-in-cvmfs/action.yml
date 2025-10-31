@@ -9,6 +9,12 @@ runs:
   using: "composite"
   steps:
     # Case 1: Run inside a Docker container if image is provided and assume CMSSW
+    - name: Get current worker disk usage
+      if: ${{ env.IMAGE != '' }}
+      shell: bash
+      run: |
+        df -h
+
     - name: Setup output directory
       if: ${{ env.IMAGE != '' }}
       shell: bash
