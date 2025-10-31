@@ -297,3 +297,75 @@ jobs:
           name: ${{ steps.artifact_name.outputs.name }}
           path: outputs/
           retention-days: 7
+
+  compare_outputs:
+    needs: test_workflow
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - IMAGE: "cmscloud/al9-cms"
+            CMSSW_VERSION: "CMSSW_14_1_0_pre4"
+            SCRAM_ARCH: "el9_amd64_gcc12"
+            ROOT: "6.30.07"
+            SUPPORTS_CODEGEN: false
+          - IMAGE: "cmscloud/cc7-cms"
+            CMSSW_VERSION: "CMSSW_11_3_4"
+            SCRAM_ARCH: "slc7_amd64_gcc900"
+            ROOT: "6.22.09"
+            SUPPORTS_CODEGEN: false
+          - IMAGE: "cmscloud/al9-cms"
+            CMSSW_VERSION: "CMSSW_14_0_0_pre1"
+            SCRAM_ARCH: "el9_amd64_gcc12"
+            ROOT: "6.26.11"
+            SUPPORTS_CODEGEN: false
+          - IMAGE: "cmscloud/al8-cms"
+            CMSSW_VERSION: "CMSSW_14_2_0_pre2_ROOT632"
+            SCRAM_ARCH: "el8_amd64_gcc12"
+            ROOT: "6.32.06"
+            SUPPORTS_CODEGEN: false
+          - LCG_RELEASE: "LCG_108"
+            LCG_ARCH: "x86_64-ubuntu2204-gcc11-opt"
+            ROOT: "6.36.02"
+            SUPPORTS_CODEGEN: true
+          - LCG_RELEASE: "dev3/latest"
+            LCG_ARCH: "x86_64-ubuntu2204-gcc11-opt"
+            ROOT: "LCG master"
+            SUPPORTS_CODEGEN: true
+    env:
+      CMSSW_VERSION: ${{ matrix.CMSSW_VERSION }}
+      IMAGE: ${{ matrix.IMAGE }}
+      LCG_RELEASE: ${{ matrix.LCG_RELEASE }}
+      LCG_ARCH: ${{ matrix.LCG_ARCH }}
+      SUPPORTS_CODEGEN: ${{ matrix.SUPPORTS_CODEGEN }}
+    steps:
+      - uses: cvmfs-contrib/github-action-cvmfs@v4
+        if: ${{ env.SUPPORTS_CODEGEN == 'true' }}
+        with:
+          cvmfs_repositories: ${{ (env.CMSSW_VERSION != '') && 'cms.cern.ch' || 'sft.cern.ch' }}
+
+      - name: Prepare artifact name
+        id: artifact_name
+        run: |
+          SAFE_NAME=$(echo "${{ matrix.CMSSW_VERSION || matrix.LCG_RELEASE }}" | tr '/' '_')
+          SAFE_ROOT=$(echo "${{ matrix.ROOT }}" | tr ' /' '_')
+          echo "name=outputs-${SAFE_NAME}-ROOT${SAFE_ROOT}" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifact_name.outputs.name }}
+          path: comparison-input
+
+      - name: Skip comparison when codegen is unavailable
+        if: ${{ env.SUPPORTS_CODEGEN != 'true' }}
+        run: |
+          echo "Codegen backend not available for this configuration; skipping comparison."  # placeholder for future logic
+
+      - uses: ./.github/actions/run-in-cvmfs
+        name: Compare outputs
+        if: ${{ env.SUPPORTS_CODEGEN == 'true' }}
+        with:
+          script: |
+            python3 scripts/ci/compare_outputs.py comparison-input/${{ steps.artifact_name.outputs.name }}
