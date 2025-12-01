@@ -306,6 +306,53 @@ inline Double_t verticalInterpPdfIntegral(double const* coefList, std::size_t nC
    return result > 0. ? result : integralFloorVal;
 }
 
+inline int parametricHistFindBin(int const N_bins, const std::vector<double>& bins, const double x)
+{
+  if (x < bins[0] || x >= bins[N_bins]) return -1;
+  
+  // Search for the bin
+  for (int i = 0; i < N_bins; ++i) {
+    if (x >= bins[i] && x < bins[i+1]) return i;
+  }
+  return -1;
+}
+
+inline Double_t parametricHistMorphScale(double const parVal, int nMorphs, 
+                                         const double* morphCoeffs,
+                                         const double* morphDiffs, const double* morphSums,
+                                         double smoothRegion)
+{
+  double morphScale = 1.0;
+  for (int i = 0; i < nMorphs; ++i) {
+    double coeff = morphCoeffs[i];
+    double a = 0.5 * coeff;
+    double b = smoothStepFunc(coeff, smoothRegion);
+    morphScale *= 1 + (1.0 / parVal) * a * (morphDiffs[i] + b * morphSums[i]);
+  }
+  return morphScale;
+}
+
+// Optimized version that only evaluates one bin's parameter
+inline Double_t parametricHistEvaluateSingleBin(int const N_bins, const std::vector<double>& bins,
+                                                 const std::vector<double>& widths, const double x,
+                                                 double parVal, int nMorphs,
+                                                 const double* morphCoeffs,
+                                                 const double* morphDiffs, const double* morphSums,
+                                                 double smoothRegion)
+{
+  // Find which bin x falls into
+  int bin_i = parametricHistFindBin(N_bins, bins, x);
+  if (bin_i < 0) return 0.0;  // Out of range
+  
+  // Apply morphing to this bin's parameter value
+  double scale = parametricHistMorphScale(parVal, nMorphs, morphCoeffs, 
+                                         morphDiffs, morphSums, smoothRegion);
+  
+  // Return normalized by bin width
+  return (parVal * scale) / widths[bin_i];
+}
+
+
 } // namespace MathFuncs
 } // namespace Detail
 } // namespace RooFit

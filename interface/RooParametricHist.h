@@ -32,7 +32,10 @@ public:
 
   RooRealVar & getObs() const { return (RooRealVar&)x; };
   const std::vector<double>  getBins()   const { return bins;   };
+  const int getNBins() const { return N_bins; };
   const std::vector<double>  getWidths() const { return widths; };
+
+  const RooArgList& getPars() const { return pars; };
 
   const double quickSum() const {return getFullSum() ;}
   //RooAddition & getYieldVar(){return sum;};
@@ -40,6 +43,14 @@ public:
   // how can we pass this version? is there a Collection object for RooDataHists?
   //void addMorphs(RooArgList &_morphPdfsUp, RooArgList &_morphPdfsDown, RooArgList &_coeffs, double smoothRegion);
   void addMorphs(RooDataHist&, RooDataHist&, RooRealVar&, double );
+  Double_t evaluate() const override ;
+
+  // Accessors for evaluation data
+  double getX() const { return x; }
+  double getSmoothRegion() const { return _smoothRegion; }
+  bool hasMorphs() const { return _hasMorphs; }
+
+  double getParVal(int bin_i) const;
 
 protected:
 
@@ -63,10 +74,6 @@ protected:
   void initializeBins(const TH1&) const;
   //void initializeNorm();
 
-
-  double evaluatePartial() const ;
-  double evaluateFull() const ;
-  Double_t evaluate() const override ;
   double getFullSum() const ;
 
   mutable double _cval;

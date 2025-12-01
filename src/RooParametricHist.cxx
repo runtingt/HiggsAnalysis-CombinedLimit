@@ -8,6 +8,7 @@
 #include "RooDataHist.h"
 #include "RooAbsPdf.h"
 #include "../interface/RooParametricHist.h"
+#include "../interface/CombineMathFuncs.h"
 
 #include <math.h>
 #include "TMath.h"
@@ -188,47 +189,37 @@ double RooParametricHist::evaluateMorphFunction(int j) const
     }
     return scale;
 }
-double RooParametricHist::evaluatePartial() const
-{
-  auto it = std::upper_bound(std::begin(bins), std::end(bins), x);
-  if ( it == std::begin(bins) ) {
-    // underflow
-    return 0;
-  }
-  else if ( it == std::end(bins) ) {
-    // overflow
-    return 0;
-  }
-  size_t bin_i = std::distance(std::begin(bins), it) - 1;
-  RooAbsReal *retVar = (RooAbsReal*)pars.at(bin_i);
-
-  double ret = retVar->getVal();
-  ret /= widths[bin_i];
-  return ret;
-}
-
-double RooParametricHist::evaluateFull() const
-{
-  int bin_i;
-  if (x < bins[0]) 	   			return 0;    // should set to 0 instead?
-  else if (x >= bins[N_bins])   return 0;
-
-  else {
-    for(bin_i=0; bin_i<N_bins; bin_i++) {   // faster way to loop through ?
-      if (x>=bins[bin_i] && x < bins[bin_i+1] ) break;
-    }
-  }
-  double mVar = evaluateMorphFunction(bin_i);
-  RooAbsReal *retVar = (RooAbsReal*)pars.at(bin_i);
-
-  double ret = retVar->getVal()*mVar;
-  ret /= widths[bin_i];
-  return ret;
-}
 
 Double_t RooParametricHist::evaluate() const
 {
-  double ret = _hasMorphs ? evaluateFull() : evaluatePartial() ;
-  _cval=ret;
-  return ret > 0 ? ret : 0;
+  // Find which bin we're in first
+  double xVal = getX();
+  int bin_i = RooFit::Detail::MathFuncs::parametricHistFindBin(getNBins(), getBins(), xVal);
+  if (bin_i < 0) return 0.0;  // Out of range
+  
+  // Get only the parameter value for this specific bin using public method
+  double parVal = getParVal(bin_i);
+  
+  // Extract morph data only for this bin if needed
+  if (hasMorphs()) {
+    std::vector<double> coeffs;
+    int nMorphs = _coeffList.getSize();
+    coeffs.resize(nMorphs);
+    for (int i = 0; i < nMorphs; ++i) {
+      coeffs[i] = static_cast<RooRealVar*>(_coeffList.at(i))->getVal();
+    }
+    
+    // Call optimized single-bin evaluation
+    return RooFit::Detail::MathFuncs::parametricHistEvaluateSingleBin(
+        getNBins(), getBins(), getWidths(), xVal, parVal,
+        nMorphs, coeffs.data(), _diffs[bin_i].data(), _sums[bin_i].data(),
+        getSmoothRegion());
+  }
+  
+  // No morphs case - even simpler
+  return parVal / getWidths()[bin_i];
+}
+
+double RooParametricHist::getParVal(int bin_i) const {
+  return static_cast<RooAbsReal*>(pars.at(bin_i))->getVal();
 }
