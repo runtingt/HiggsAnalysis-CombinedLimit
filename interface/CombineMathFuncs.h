@@ -352,6 +352,41 @@ inline Double_t parametricHistEvaluateSingleBin(int const N_bins, const std::vec
   return (parVal * scale) / widths[bin_i];
 }
 
+inline Double_t parametricMorphFunction(int j, double parVal, bool hasMorphs, int nMorphs, 
+                                        const double* morphCoeffs, const double* morphDiffs,
+                                        const double* morphSums, double smoothRegion)
+{
+   double morphScale = 1.0;
+   if (!hasMorphs) return morphScale;
+
+   int ndim = nMorphs;
+   // apply all morphs one by one to the bin
+   // almost certaintly a faster way to do this in a vectorized way ....
+   for (int i = 0; i < ndim; ++i) {
+      double x = morphCoeffs[i];
+      double a = 0.5*x, b = smoothStepFunc(x, smoothRegion);
+      morphScale *= 1 + (1./parVal) * a*(morphDiffs[j*nMorphs + i] + b*morphSums[j*nMorphs + i]);
+   }
+   return morphScale;
+}
+
+inline Double_t parametricHistFullSum(const double* parVals, int nBins, bool hasMorphs, int nMorphs,
+                                      const double* morphCoeffs, const double* morphDiffs,
+                                      const double* morphSums, double smoothRegion)
+{
+
+   double sum=0;
+   for (int i = 0; i < nBins; ++i) {
+      double thisVal = parVals[i];
+      if (hasMorphs) {
+         // Apply morphing to this bin, just like in RooParametricHist::evaluate
+         thisVal *= parametricMorphFunction(i, thisVal, hasMorphs, nMorphs, 
+                                            morphCoeffs, morphDiffs, morphSums, smoothRegion);
+      }
+      sum+=thisVal;
+   }
+   return sum;
+}
 
 } // namespace MathFuncs
 } // namespace Detail

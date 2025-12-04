@@ -37,7 +37,7 @@ public:
 
   const RooArgList& getPars() const { return pars; };
 
-  const double quickSum() const {return getFullSum() ;}
+  const double quickSum() const;
   //RooAddition & getYieldVar(){return sum;};
 
   // how can we pass this version? is there a Collection object for RooDataHists?
@@ -51,6 +51,11 @@ public:
   bool hasMorphs() const { return _hasMorphs; }
 
   double getParVal(int bin_i) const;
+
+  // Utility functions for data extraction
+  std::vector<double> getParVals() const;
+  std::vector<double> getCoeffs() const;
+  void getFlattenedMorphs(std::vector<double>& diffs_flat, std::vector<double>& sums_flat) const;
 
 protected:
 
@@ -68,13 +73,11 @@ protected:
   mutable bool   _hasMorphs;
   mutable std::vector<std::vector <double> > _diffs;
   mutable std::vector<std::vector <double> > _sums;
-  double evaluateMorphFunction(int) const;
 
 
   void initializeBins(const TH1&) const;
   //void initializeNorm();
 
-  double getFullSum() const ;
 
   mutable double _cval;
   void update_cval(double r){_cval=r;};
