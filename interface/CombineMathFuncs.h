@@ -306,7 +306,7 @@ inline Double_t verticalInterpPdfIntegral(double const* coefList, std::size_t nC
    return result > 0. ? result : integralFloorVal;
 }
 
-inline int parametricHistFindBin(int const N_bins, const std::vector<double>& bins, const double x)
+inline int parametricHistFindBin(const int N_bins, const double* bins, const double x)
 {
   if (x < bins[0] || x >= bins[N_bins]) return -1;
   
@@ -317,7 +317,7 @@ inline int parametricHistFindBin(int const N_bins, const std::vector<double>& bi
   return -1;
 }
 
-inline Double_t parametricHistMorphScale(double const parVal, int nMorphs, 
+inline Double_t parametricHistMorphScale(const double parVal, const int nMorphs, 
                                          const double* morphCoeffs,
                                          const double* morphDiffs, const double* morphSums,
                                          double smoothRegion)
@@ -332,27 +332,31 @@ inline Double_t parametricHistMorphScale(double const parVal, int nMorphs,
   return morphScale;
 }
 
-// Optimized version that only evaluates one bin's parameter
-inline Double_t parametricHistEvaluateSingleBin(int const N_bins, const std::vector<double>& bins,
-                                                 const std::vector<double>& widths, const double x,
-                                                 double parVal, int nMorphs,
-                                                 const double* morphCoeffs,
-                                                 const double* morphDiffs, const double* morphSums,
-                                                 double smoothRegion)
+inline Double_t parametricHistEvaluate(const double x, const double parVal, const double* bins,
+                                       const int N_bins, const double* morphCoeffs, const int nMorphs,
+                                       const double* morphDiffs, const double* morphSums,
+                                       const double* widths, const double smoothRegion)
 {
-  // Find which bin x falls into
-  int bin_i = parametricHistFindBin(N_bins, bins, x);
-  if (bin_i < 0) return 0.0;  // Out of range
-  
-  // Apply morphing to this bin's parameter value
-  double scale = parametricHistMorphScale(parVal, nMorphs, morphCoeffs, 
-                                         morphDiffs, morphSums, smoothRegion);
-  
-  // Return normalized by bin width
-  return (parVal * scale) / widths[bin_i];
+   // Find which bin we're in first
+   int bin_i = parametricHistFindBin(N_bins, bins, x);
+   if (bin_i < 0) return 0.0;  // Out of range
+
+   // morphDiffs and morphSums are flattened arrays of size N_bins * nMorphs, we want to get the slice for this bin
+   const double* binMorphDiffs = morphDiffs + bin_i * nMorphs;
+   const double* binMorphSums = morphSums + bin_i * nMorphs;
+
+   // Morphing case
+   if (morphCoeffs != nullptr) {
+      double scale = parametricHistMorphScale(parVal, nMorphs, morphCoeffs,
+                                              binMorphDiffs, binMorphSums, smoothRegion);
+      return (parVal * scale) / widths[bin_i];
+   }
+   // No morphing case
+   return parVal / widths[bin_i];
+
 }
 
-inline Double_t parametricMorphFunction(int j, double parVal, bool hasMorphs, int nMorphs, 
+inline Double_t parametricMorphFunction(const int j, const double parVal, const bool hasMorphs, const int nMorphs, 
                                         const double* morphCoeffs, const double* morphDiffs,
                                         const double* morphSums, double smoothRegion)
 {
@@ -370,11 +374,10 @@ inline Double_t parametricMorphFunction(int j, double parVal, bool hasMorphs, in
    return morphScale;
 }
 
-inline Double_t parametricHistFullSum(const double* parVals, int nBins, bool hasMorphs, int nMorphs,
+inline Double_t parametricHistFullSum(const double* parVals, const int nBins, const bool hasMorphs, const int nMorphs,
                                       const double* morphCoeffs, const double* morphDiffs,
                                       const double* morphSums, double smoothRegion)
 {
-
    double sum=0;
    for (int i = 0; i < nBins; ++i) {
       double thisVal = parVals[i];
@@ -384,6 +387,51 @@ inline Double_t parametricHistFullSum(const double* parVals, int nBins, bool has
                                             morphCoeffs, morphDiffs, morphSums, smoothRegion);
       }
       sum+=thisVal;
+   }
+   return sum;
+}
+
+inline Double_t parametricHistIntegral(const double* parVals, const double* bins, const int N_bins, const double* morphCoeffs,
+                                       const int nMorphs, const double* morphDiffs, const double* morphSums,
+                                       const double* widths, const double smoothRegion, const char* rangeName,
+                                       const double xmin, const double xmax)
+{
+   // No ranges
+   if (!rangeName) {
+      return parametricHistFullSum(parVals, N_bins, morphCoeffs != nullptr, nMorphs,
+                                   morphCoeffs, morphDiffs, morphSums, smoothRegion);
+   }
+
+   // Case with ranges, calculate integral explicitly
+   double sum=0 ;
+   int i;
+   for (i=1; i<=N_bins; i++) {
+      // Get maybe-morphed bin value
+      double binVal = parVals[i-1] / widths[i-1];
+      if (morphCoeffs != nullptr) {
+         binVal *= parametricMorphFunction(i - 1, parVals[i - 1], true, nMorphs,
+                                           morphCoeffs, morphDiffs, morphSums, smoothRegion);
+      }
+
+      if (bins[i-1] >= xmin && bins[i] <= xmax) {
+         // Bin fully in integration domain
+         sum += (bins[i] - bins[i-1]) * binVal;
+      } else if (bins[i-1] < xmin && bins[i] > xmax) {
+         // Domain is fully contained in this bin
+         sum += (xmax - xmin) * binVal;
+         // Exit here, this is the last bin to be processed by construction
+         double fullSum = parametricHistFullSum(parVals, N_bins, morphCoeffs != nullptr, nMorphs,
+                                              morphCoeffs, morphDiffs, morphSums, smoothRegion);
+         return sum / fullSum;
+      } else if (bins[i-1] < xmin && bins[i] <= xmax && bins[i] > xmin) {
+         // Lower domain boundary is in bin
+         sum += (bins[i] - xmin) * binVal;
+      } else if (bins[i-1] >= xmin && bins[i] > xmax && bins[i-1] < xmax) {
+         // Upper domain boundary is in bin
+         // Exit here, this is the last bin to be processed by construction
+         sum += (xmax - bins[i-1]) * binVal;
+         return sum;
+      }
    }
    return sum;
 }
