@@ -74,13 +74,17 @@ void cacheutils::ChannelSumNLL::setup_(RooAbsData &data) {
     factorizedPdfOwner_.reset(factorized);
   constraints_.add(constraints);
 
-  datasets_ = splitData_(data);
+  RooAbsCategoryLValue const &indexCat = factorizedPdf_->indexCat();
+  // A RooSimultaneousOpt without channels is used for likelihoods made of
+  // constraint terms only (the prefit nuisance fit of FitDiagnostics). There
+  // is nothing to split then, and the category may not even have states.
+  if (hasChannels_(indexCat))
+    datasets_ = splitData_(data);
 
   RooFit::EvalBackend backendArg(evalBackend_);
 
   // One RooFit likelihood per channel. The channel pdfs contain no
   // constraint terms anymore, so createNLL() finds none to add.
-  RooAbsCategoryLValue const &indexCat = factorizedPdf_->indexCat();
   for (auto const &state : indexCat) {
     std::string const &label = state.first;
     RooAbsPdf *pdf = factorizedPdf_->getPdf(label.c_str());
@@ -234,7 +238,19 @@ std::vector<std::unique_ptr<RooAbsData>> cacheutils::ChannelSumNLL::splitData_(R
   return data.split(*factorizedPdf_, /*createEmptyDataSets=*/true);
 }
 
+bool cacheutils::ChannelSumNLL::hasChannels_(RooAbsCategoryLValue const &indexCat) const {
+  for (auto const &state : indexCat) {
+    if (factorizedPdf_->getPdf(state.first.c_str()))
+      return true;
+  }
+  return false;
+}
+
 bool cacheutils::ChannelSumNLL::setData(RooAbsData &data, bool /*cloneData*/) {
+  if (channelNLLs_.empty()) {
+    data_ = &data;
+    return true;
+  }
   auto newDatasets = splitData_(data);
   for (std::size_t i = 0; i < channelNLLs_.size(); ++i) {
     std::string const &label = channelNames_[i];

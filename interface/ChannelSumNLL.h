@@ -8,6 +8,7 @@
 
 #include "SimNLLBase.h"
 
+#include <RooAbsCategoryLValue.h>
 #include <RooAbsData.h>
 #include <RooAbsPdf.h>
 #include <RooArgList.h>
@@ -129,6 +130,7 @@ namespace cacheutils {
 
     void setup_(RooAbsData &data);
     std::vector<std::unique_ptr<RooAbsData>> splitData_(RooAbsData &data) const;
+    bool hasChannels_(RooAbsCategoryLValue const &indexCat) const;
     /// The pdf to build the channel likelihood from: the channel pdf itself, or
     /// a clone with private copies of the categories it depends on.
     RooAbsPdf &channelPdfForNLL_(RooAbsPdf &pdf, std::vector<CategorySync> &syncs);
