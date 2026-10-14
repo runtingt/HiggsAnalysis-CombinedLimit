@@ -1062,7 +1062,10 @@ bool utils::anyParameterAtBoundaries( const RooArgSet &params, int verbosity ){
     bool isAnyBad = false;
 
     for (RooAbsArg *aAbsArg : params) {
-        RooRealVar *a = static_cast<RooRealVar*>(aAbsArg);
+        // Only real-valued parameters have boundaries (a RooCategory that is
+        // not registered as discrete parameter would end up here otherwise).
+        RooRealVar *a = dynamic_cast<RooRealVar*>(aAbsArg);
+        if (!a) continue;
 
         bool isBad = isParameterAtBoundary(*a);
 

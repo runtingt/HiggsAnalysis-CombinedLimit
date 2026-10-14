@@ -582,6 +582,8 @@ In general, the performance of <span style="font-variant:small-caps;">Combine</s
 
 You may want to check with the <span style="font-variant:small-caps;">Combine</span> development team if you are using these options, as they are somewhat for _expert_ use.
 
+The channel masking is available with every likelihood backend (`--nllbackend`). With the RooFit backends (`cpu`, `codegen`), <span style="font-variant:small-caps;">Combine</span> builds one RooFit likelihood per channel plus one for the constraint terms and sums them itself, so that masked channels are not evaluated at all. With the `codegen` backend the analytic gradients of the channels are summed as well. The runtime define `--X-rtd SIMNLL_ROOFIT_MONOLITHIC=1` switches back to a single RooFit likelihood object for the whole model, which does not support channel masking.
+
 ## RooSplineND multidimensional splines
 
 [RooSplineND](https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit/blob/main/interface/RooSplineND.h) can be used to interpolate from a tree of points to produce a continuous function in N-dimensions. This function can then be used as input to workspaces allowing for parametric rates/cross-sections/efficiencies. It can also be used to up-scale the resolution of likelihood scans (i.e like those produced from <span style="font-variant:small-caps;">Combine</span>) to produce smooth contours.

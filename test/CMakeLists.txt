@@ -213,6 +213,43 @@ if(NOT CMSSW_VERSION MATCHES "^CMSSW_11")
     # so compare floating point numbers with a relative tolerance of 1 %.
     DIFFCMD python3 ${CMAKE_CURRENT_SOURCE_DIR}/numdiff.py --rtol 0.01
   )
+
+endif()
+
+# Discrete profiling of a RooMultiPdf on all likelihood backends, with
+# channel masking. The toy workspace only contains pdf classes with codegen
+# support, and the RooMultiPdf of RooFit (ROOT >= 6.37) is needed for that.
+if(ROOT_VERSION VERSION_GREATER_EQUAL 6.37)
+  set(_toy_multipdf_fit "combine -v -1 -M MultiDimFit --algo singles --cminDefaultMinimizerTolerance 0.001 --cminDefaultMinimizerStrategy 1 --X-rtd MINIMIZER_freezeDisassociatedParams --X-rtd MINIMIZER_multiMin_maskChannels=2")
+  ADD_COMBINE_TEST(toy_multipdf
+    T2W_COMMAND
+      root -l -b -q "${REPO}/test/makeToyMultiPdfWorkspace.C(\"toy_multipdf.root\")"
+    COMBINE_COMMANDS
+      "${_toy_multipdf_fit} --nllbackend combine toy_multipdf.root"
+      "${_toy_multipdf_fit} --nllbackend cpu toy_multipdf.root"
+    DIFFCMD python3 ${CMAKE_CURRENT_SOURCE_DIR}/numdiff.py --rtol 0.01
+  )
+  # The codegen backend compiles the likelihood with Cling and clad, which
+  # takes a while, so it is a test of its own.
+  ADD_COMBINE_TEST(toy_multipdf_codegen
+    T2W_COMMAND
+      root -l -b -q "${REPO}/test/makeToyMultiPdfWorkspace.C(\"toy_multipdf_codegen.root\")"
+    COMBINE_COMMANDS
+      "${_toy_multipdf_fit} --nllbackend codegen toy_multipdf_codegen.root"
+    DIFFCMD python3 ${CMAKE_CURRENT_SOURCE_DIR}/numdiff.py --rtol 0.01
+  )
+
+  if(BUILD_TESTS AND NOT DEFINED standalone_tests)
+    # Unit tests of the per-channel likelihood that Combine uses for the
+    # RooSimultaneousOpt on the RooFit evaluation backends.
+    COMBINE_ADD_GTEST(multipdf-testChannelSumNLL
+        testChannelSumNLL.cxx
+        LIBRARIES HiggsAnalysisCombinedLimit
+    )
+    set_property(TEST gtest-multipdf-testChannelSumNLL
+        PROPERTY FIXTURES_REQUIRED "multipdf;toy_multipdf"
+    )
+  endif()
 endif()
 
 # Template analysis CMSHistFunc

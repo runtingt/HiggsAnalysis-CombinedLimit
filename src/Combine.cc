@@ -60,6 +60,7 @@
 #include "../interface/AsimovUtils.h"
 #include "../interface/CascadeMinimizer.h"
 #include "../interface/ProfilingTools.h"
+#include "../interface/ChannelSumNLL.h"
 #include "../interface/RooMultiPdfCombine.h"
 #include "../interface/CMSHistFunc.h"
 #include "../interface/CMSHistSum.h"
@@ -1338,9 +1339,17 @@ std::unique_ptr<RooAbsReal> combineCreateNLL(
     declaredMathFuncs = true;
   }
 
-  // If we don't use the "combine" backend, use the base class implementation
-  // (and not the one of the RooSimultaneousOpt).
   if (isSimultaneousOpt) {
+    // On the RooFit backends, Combine still does the sum over the channels
+    // itself, with one RooFit likelihood per channel. This keeps the channel
+    // masking of the discrete profiling available on these backends. The
+    // runtime define switches to the monolithic RooFit likelihood instead.
+    if (!runtimedef::get(std::string("SIMNLL_ROOFIT_MONOLITHIC"))) {
+      std::string name = std::string("nll_") + pdf.GetName() + "_" + data.GetName();
+      return std::make_unique<cacheutils::ChannelSumNLL>(
+          name.c_str(), name.c_str(), static_cast<RooSimultaneous &>(pdf), data, constrain, evalBackend);
+    }
+    // Use the base class implementation (and not the one of the RooSimultaneousOpt).
     return static_cast<RooSimultaneousOpt &>(pdf).createNLLPassthrough(data, cmdList);
   } else {
     return std::unique_ptr<RooAbsReal>{pdf.createNLL(data, cmdList)};

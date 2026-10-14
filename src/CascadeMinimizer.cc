@@ -266,7 +266,7 @@ bool CascadeMinimizer::improveOnce(int verbose, bool noHesse)
         outcome = nllutils::robustMinimize(nll_, *minimizer_, verbose, setZeroPoint_);
     } else {
         if (verbose+2>0) CombineLogger::instance().log("CascadeMinimizer.cc",__LINE__,std::string(Form("Minimization configured with Type=%s, Algo=%s, strategy=%d, tolerance=%g",myType.c_str(),myAlgo.c_str(),myStrategy,tol)),__func__);
-        cacheutils::CachingSimNLL *simnll = setZeroPoint_ ? dynamic_cast<cacheutils::CachingSimNLL *>(&nll_) : 0;
+        cacheutils::SimNLLBase *simnll = setZeroPoint_ ? dynamic_cast<cacheutils::SimNLLBase *>(&nll_) : 0;
         if (simnll) simnll->setZeroPoint();
         if ((!simnll) && optConst) minimizer_->optimizeConst(std::max(0,optConst));
         if ((!simnll) && rooFitOffset) minimizer_->setOffsetting(std::max(0,rooFitOffset));
@@ -351,7 +351,7 @@ bool CascadeMinimizer::minos(const RooArgSet & params , int verbose ) {
   const std::string &myType(ROOT::Math::MinimizerOptions::DefaultMinimizerType());
 
   if (setZeroPoint_) {
-    if (auto* simnll = dynamic_cast<cacheutils::CachingSimNLL*>(&nll_)) {
+    if (auto* simnll = dynamic_cast<cacheutils::SimNLLBase*>(&nll_)) {
       simnll->setZeroPoint();
     }
   }
@@ -370,7 +370,7 @@ bool CascadeMinimizer::minos(const RooArgSet & params , int verbose ) {
    //std::cout << "Run Minos in  "; tw.Print(); std::cout << std::endl;
 
    if (setZeroPoint_) {
-      cacheutils::CachingSimNLL *simnll = dynamic_cast<cacheutils::CachingSimNLL *>(&nll_);
+      cacheutils::SimNLLBase *simnll = dynamic_cast<cacheutils::SimNLLBase *>(&nll_);
       if (simnll) simnll->clearZeroPoint();
    }
    
@@ -399,7 +399,7 @@ bool CascadeMinimizer::hesse(int verbose ) {
    std::string myAlgo(ROOT::Math::MinimizerOptions::DefaultMinimizerAlgo());
 
    if (setZeroPoint_) {
-      cacheutils::CachingSimNLL *simnll = dynamic_cast<cacheutils::CachingSimNLL *>(&nll_);
+      cacheutils::SimNLLBase *simnll = dynamic_cast<cacheutils::SimNLLBase *>(&nll_);
       if (simnll) { 
          simnll->setZeroPoint();
       }
@@ -414,7 +414,7 @@ bool CascadeMinimizer::hesse(int verbose ) {
    utils::setAllConstant(frozenSet, /*constant=*/false);
 
    if (setZeroPoint_) {
-     if (auto* simnll = dynamic_cast<cacheutils::CachingSimNLL*>(&nll_))
+     if (auto* simnll = dynamic_cast<cacheutils::SimNLLBase*>(&nll_))
        simnll->clearZeroPoint();
    }
 
@@ -532,7 +532,7 @@ bool CascadeMinimizer::minimize(int verbose, bool cascade)
         remakeMinimizer();
         minimizer_->setPrintLevel(verbose-2);
         minimizer_->setStrategy(preFit_-1);
-        cacheutils::CachingSimNLL *simnll = setZeroPoint_ ? dynamic_cast<cacheutils::CachingSimNLL *>(&nll_) : 0;
+        cacheutils::SimNLLBase *simnll = setZeroPoint_ ? dynamic_cast<cacheutils::SimNLLBase *>(&nll_) : 0;
         if (simnll) simnll->setZeroPoint();
         if (optConst) minimizer_->optimizeConst(std::max(0,optConst));
         if (rooFitOffset) minimizer_->setOffsetting(std::max(0,rooFitOffset));
@@ -629,7 +629,7 @@ bool CascadeMinimizer::minimize(int verbose, bool cascade)
 bool CascadeMinimizer::multipleMinimize(const RooArgSet &reallyCleanParameters, bool& ret, double& minimumNLL, int verbose, bool cascade,int mode, std::vector<std::vector<bool> >&contributingindices){
     static bool freezeDisassParams = runtimedef::get(std::string("MINIMIZER_freezeDisassociatedParams"));
     static int maskChannels = freezeDisassParams ? runtimedef::get(std::string("MINIMIZER_multiMin_maskChannels")) : 0;
-    cacheutils::CachingSimNLL *simnll = dynamic_cast<cacheutils::CachingSimNLL *>(&nll_);
+    cacheutils::SimNLLBase *simnll = dynamic_cast<cacheutils::SimNLLBase *>(&nll_);
 
     //RooTrace::active(true);
     /* Different modes for minimization 

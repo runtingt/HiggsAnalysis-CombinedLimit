@@ -374,7 +374,7 @@ bool nllutils::createOrReuseNLL(RooAbsPdf &pdf,
     if (!nll)
       nll = combineCreateNLL(pdf, data, &nuisances, /*offset=*/false);
     else
-      dynamic_cast<cacheutils::CachingSimNLL &>(*nll).setData(data);
+      nll->setData(data, /*cloneData=*/false);
     return true;
   }
   nll = combineCreateNLL(pdf, data, &nuisances, /*offset=*/false);
@@ -397,7 +397,7 @@ bool nllutils::robustMinimize(RooAbsReal &nll, RooMinimizer &minim, int verbosit
     double initialNll = nll.getVal();
     std::unique_ptr<RooArgSet> pars;
     bool ret = false;
-    cacheutils::CachingSimNLL *simnll = (zeroPoint ?  dynamic_cast<cacheutils::CachingSimNLL *>(&nll) : 0);
+    cacheutils::SimNLLBase *simnll = (zeroPoint ?  dynamic_cast<cacheutils::SimNLLBase *>(&nll) : 0);
     for (int tries = 0, maxtries = 4; tries <= maxtries; ++tries) {
         if (simnll) simnll->setZeroPoint();
         int status = minim.minimize(ROOT::Math::MinimizerOptions::DefaultMinimizerType().c_str(), ROOT::Math::MinimizerOptions::DefaultMinimizerAlgo().c_str());
