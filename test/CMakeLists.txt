@@ -431,6 +431,13 @@ COMBINE_ADD_TEST(hybridnew_accuracy
     PASSREGEX "All checks passed"
 )
 
+# Analytic vs numeric integrals of every auto-discovered PDF
+COMBINE_ADD_TEST(analytic_integrals_py
+    COMMAND python3 test_analytic_integrals.py
+    COPY_TO_BUILDDIR ${REPO}/test/test_analytic_integrals.py
+    PASSREGEX "All checks passed"
+)
+
 # test_interference.py
 COMBINE_ADD_TEST(test_interference_py
     COMMAND python3 test_interference.py
